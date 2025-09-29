@@ -57,21 +57,21 @@
             // 
             // raceDuration
             // 
-            raceDuration.Location = new Point(29, 86);
+            raceDuration.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            raceDuration.Location = new Point(29, 84);
             raceDuration.Margin = new Padding(4, 5, 4, 5);
             raceDuration.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
-            raceDuration.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             raceDuration.Name = "raceDuration";
-            raceDuration.Size = new Size(160, 27);
+            raceDuration.Size = new Size(160, 30);
             raceDuration.TabIndex = 0;
-            raceDuration.Value = new decimal(new int[] { 3600, 0, 0, 0 });
             // 
             // confirmDurationBtn
             // 
-            confirmDurationBtn.Location = new Point(197, 81);
+            confirmDurationBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            confirmDurationBtn.Location = new Point(211, 68);
             confirmDurationBtn.Margin = new Padding(4, 5, 4, 5);
             confirmDurationBtn.Name = "confirmDurationBtn";
-            confirmDurationBtn.Size = new Size(100, 35);
+            confirmDurationBtn.Size = new Size(101, 46);
             confirmDurationBtn.TabIndex = 1;
             confirmDurationBtn.Text = "Bestätigen";
             confirmDurationBtn.UseVisualStyleBackColor = true;
@@ -80,30 +80,33 @@
             // label1
             // 
             label1.AutoSize = true;
+            label1.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.Location = new Point(26, 55);
             label1.Margin = new Padding(4, 0, 4, 0);
             label1.Name = "label1";
-            label1.Size = new Size(164, 20);
+            label1.Size = new Size(166, 23);
             label1.TabIndex = 2;
-            label1.Text = "Renndauer in Sekunden";
+            label1.Text = "Renndauer Minuten:";
             // 
             // label2
             // 
             label2.AutoSize = true;
+            label2.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label2.Location = new Point(26, 126);
             label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
-            label2.Size = new Size(67, 20);
+            label2.Size = new Size(130, 23);
             label2.TabIndex = 5;
-            label2.Text = "Startliste";
+            label2.Text = "Startliste Laden:";
             // 
             // starterListBtn
             // 
             starterListBtn.Enabled = false;
-            starterListBtn.Location = new Point(142, 142);
+            starterListBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            starterListBtn.Location = new Point(211, 135);
             starterListBtn.Margin = new Padding(4, 5, 4, 5);
             starterListBtn.Name = "starterListBtn";
-            starterListBtn.Size = new Size(100, 35);
+            starterListBtn.Size = new Size(101, 47);
             starterListBtn.TabIndex = 4;
             starterListBtn.Text = "Auswahl";
             starterListBtn.UseVisualStyleBackColor = true;
@@ -112,10 +115,12 @@
             // starterListLabel
             // 
             starterListLabel.AutoSize = true;
-            starterListLabel.Location = new Point(26, 150);
+            starterListLabel.BorderStyle = BorderStyle.FixedSingle;
+            starterListLabel.Font = new Font("Segoe UI", 10.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            starterListLabel.Location = new Point(29, 155);
             starterListLabel.Margin = new Padding(4, 0, 4, 0);
             starterListLabel.Name = "starterListLabel";
-            starterListLabel.Size = new Size(123, 20);
+            starterListLabel.Size = new Size(149, 27);
             starterListLabel.TabIndex = 6;
             starterListLabel.Text = "Nicht ausgewählt";
             // 
@@ -147,21 +152,23 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(630, 136);
+            label3.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label3.Location = new Point(586, 123);
             label3.Margin = new Padding(4, 0, 4, 0);
             label3.Name = "label3";
-            label3.Size = new Size(95, 20);
+            label3.Size = new Size(231, 28);
             label3.TabIndex = 20;
-            label3.Text = "Startnummer";
+            label3.Text = "Startnummern Eingabe";
             label3.TextAlign = ContentAlignment.TopCenter;
             // 
             // enterRoundBtn
             // 
             enterRoundBtn.Enabled = false;
-            enterRoundBtn.Location = new Point(681, 164);
+            enterRoundBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            enterRoundBtn.Location = new Point(709, 167);
             enterRoundBtn.Margin = new Padding(4, 5, 4, 5);
             enterRoundBtn.Name = "enterRoundBtn";
-            enterRoundBtn.Size = new Size(152, 59);
+            enterRoundBtn.Size = new Size(152, 51);
             enterRoundBtn.TabIndex = 11;
             enterRoundBtn.Text = "Eintragen";
             enterRoundBtn.UseVisualStyleBackColor = true;
@@ -170,11 +177,12 @@
             // roundResultLabel
             // 
             roundResultLabel.AutoSize = true;
+            roundResultLabel.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
             roundResultLabel.ForeColor = Color.Green;
-            roundResultLabel.Location = new Point(630, 239);
+            roundResultLabel.Location = new Point(586, 228);
             roundResultLabel.Margin = new Padding(4, 0, 4, 0);
             roundResultLabel.Name = "roundResultLabel";
-            roundResultLabel.Size = new Size(0, 20);
+            roundResultLabel.Size = new Size(0, 28);
             roundResultLabel.TabIndex = 12;
             // 
             // resultGrid
@@ -191,10 +199,10 @@
             // 
             pictureBox1.BorderStyle = BorderStyle.FixedSingle;
             pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
-            pictureBox1.Location = new Point(1175, 44);
+            pictureBox1.Location = new Point(1172, 72);
             pictureBox1.Margin = new Padding(3, 4, 3, 4);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(196, 251);
+            pictureBox1.Size = new Size(196, 202);
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 15;
             pictureBox1.TabStop = false;
@@ -221,10 +229,11 @@
             // 
             // startNumberInput
             // 
+            startNumberInput.BorderStyle = BorderStyle.FixedSingle;
             startNumberInput.Font = new Font("Segoe UI", 19.8000011F, FontStyle.Regular, GraphicsUnit.Point, 0);
             startNumberInput.Location = new Point(529, 167);
             startNumberInput.Name = "startNumberInput";
-            startNumberInput.Size = new Size(125, 51);
+            startNumberInput.Size = new Size(146, 51);
             startNumberInput.TabIndex = 21;
             startNumberInput.KeyDown += startNumberInput_KeyDown;
             // 
@@ -247,8 +256,8 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Font = new Font("Microsoft Sans Serif", 15F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label4.Location = new Point(24, 9);
+            label4.Font = new Font("Microsoft Sans Serif", 15F, FontStyle.Bold | FontStyle.Underline, GraphicsUnit.Point, 0);
+            label4.Location = new Point(26, 17);
             label4.Margin = new Padding(4, 0, 4, 0);
             label4.Name = "label4";
             label4.Size = new Size(166, 29);
