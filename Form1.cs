@@ -18,7 +18,7 @@ namespace Rundenzeiten
         private System.Windows.Forms.Timer countdownTimer;
         private List<PersonEntry> entries;
         private List<RoundEntry> roundEntries = new List<RoundEntry>();
-        private string resultFilePath = "Ergebnisse_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
+        private string resultFilePath; // = "Ergebnisse_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
 
         public Form1()
         {
@@ -28,6 +28,10 @@ namespace Rundenzeiten
             countdownTimer.Interval = 500;
             countdownTimer.Tick += CountdownTimer_Tick;
             countdownTimer.Start();
+
+            // Startnummerfeld & Button sperren bis Rennstart
+            startNumberInput.Enabled = false;
+            enterRoundBtn.Enabled = false;
         }
 
         private void CountdownTimer_Tick(object sender, EventArgs e)
@@ -75,6 +79,11 @@ namespace Rundenzeiten
 
                 if (entries.Count > 1)
                 {
+                    // Dateiname setzen: Rennname + Klasse
+                    string klasse = entries.First().Klasse;     // nimmt die Klasse vom ersten Teilnehmer
+                    string rennen = "CrossImBad";               // hier kannst du später auch ein Textfeld nehmen
+                    resultFilePath = GetResultFilePath(rennen, klasse);
+
                     saveCSV();
                     starterListLabel.Text = "Teilnehmer geladen";
                     starterListBtn.BackColor = Color.LightGreen;
@@ -83,7 +92,31 @@ namespace Rundenzeiten
                 }
             }
         }
+        private string GetResultFilePath(string rennen, string klasse)
+        {
+            string date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+            // Alles in runden Klammern entfernen
+            int start = klasse.IndexOf('(');
+            if (start >= 0)
+            {
+                int end = klasse.IndexOf(')', start);
+                if (end > start)
+                {
+                    klasse = klasse.Remove(start, end - start + 1);
+                }
+            }
 
+            // Leerzeichen trimmen
+            klasse = klasse.Trim();
+
+            // Verbotene Zeichen im Dateinamen ersetzen
+            foreach (char c in Path.GetInvalidFileNameChars())
+            {
+                klasse = klasse.Replace(c, '_');
+                rennen = rennen.Replace(c, '_');
+            }
+            return $"Ergebnisse_{rennen}_{klasse}_{date}.csv";
+        }
 
         private List<PersonEntry> ReadCsvFile(string path)
         {
@@ -213,8 +246,11 @@ namespace Rundenzeiten
         {
             const string Header = "Platz;PlatzAK;Startnummer;Name;Vorname;Geschlecht;Geburtsdatum;Verein;Strecke;Klasse;Zeit;Rundenzeiten";
             List<CSVRecord> records = BuildRecords();
+            // Plätze berechnen + sortieren
             RankRecords(records);
+            //Datei schreiben
             SaveToCsvFile(records, Header, resultFilePath);
+            //Tabelle anzeigen
             DisplayInGrid(records);
         }
 
@@ -223,25 +259,28 @@ namespace Rundenzeiten
         {
             var table = new DataTable();
 
-            table.Columns.AddRange(new[]
-            {
-                new DataColumn("Platz"),
-                new DataColumn("PlatzAK"),
-                new DataColumn("Startnummer"),
-                new DataColumn("Name"),
-                new DataColumn("Vorname"),
-                new DataColumn("Verein"),
-                new DataColumn("Klasse"),
-                new DataColumn("Zeit"),
-                new DataColumn("Rundenzeiten")
-            });
+            // 👉 Änderung: Zahlen als int speichern
+            table.Columns.Add("Platz", typeof(int));
+            table.Columns.Add("PlatzAK", typeof(int));
+            table.Columns.Add("Startnummer", typeof(int));
+
+            // Rest bleibt String
+            table.Columns.Add("Name", typeof(string));
+            table.Columns.Add("Vorname", typeof(string));
+            table.Columns.Add("Verein", typeof(string));
+            table.Columns.Add("Klasse", typeof(string));
+            table.Columns.Add("Zeit", typeof(string));
+            table.Columns.Add("Rundenzeiten", typeof(string));
 
             foreach (var r in records)
             {
+                int startnr;
+                int.TryParse(r.Startnummer, out startnr);
+
                 table.Rows.Add(
                     r.Platz,
                     r.PlatzAK,
-                    r.Startnummer,
+                    startnr,
                     r.Name,
                     r.Vorname,
                     r.Verein,
@@ -251,7 +290,10 @@ namespace Rundenzeiten
                 );
             }
 
-            resultGrid.DataSource = table;
+            // 👉 Änderung: DataView mit Sortierung nach Platz
+            var view = table.DefaultView;
+            view.Sort = "Platz ASC";       // immer automatisch aufsteigend
+            resultGrid.DataSource = view;  // 👉 Änderung: View statt Tabelle binden
         }
 
         private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
@@ -269,27 +311,34 @@ namespace Rundenzeiten
 
         private void RankRecords(List<CSVRecord> records)
         {
-            // Global Ranking
-            records = records
-                .OrderByDescending(r => r.Rundenzeiten.Count)
+            // 👉 Änderung: Liste direkt sortieren
+            var ranked = records
+                .OrderBy(r => r.Geschlecht.ToLower() == "männlich" || r.Geschlecht.ToLower() == "m" ? 0 : 1)
+                .ThenByDescending(r => r.Rundenzeiten.Count)
                 .ThenBy(r => r.Zeit.TotalSeconds)
                 .ToList();
+            // .OrderByDescending(r => r.Rundenzeiten.Count)   // zuerst nach Runden
+            // .ThenBy(r => r.Zeit.TotalSeconds)               // dann nach Zeit
+            // .ToList();
 
-            for (int i = 0; i < records.Count; i++)
-                records[i].Platz = i + 1;
+            // 👉 Änderung: Platz setzen
+            for (int i = 0; i < ranked.Count; i++)
+                ranked[i].Platz = i + 1;
 
-            // Class-wise (PlatzAK)
-            var ranked = records
-                .GroupBy(r => r.Klasse)
-                .SelectMany(group =>
-                    group.OrderBy(r => r.Platz)
-                         .Select((r, index) =>
-                         {
-                             r.PlatzAK = index + 1;
-                             return r;
-                         }))
-                .ToList();
+            // 👉 Änderung: PlatzAK berechnen
+            //foreach (var group in ranked.GroupBy(r => r.Klasse))
+            
+            // PlatzAK getrennt nach Klasse UND Geschlecht
+            foreach (var group in ranked.GroupBy(r => new { r.Klasse, r.Geschlecht }))
+            {
+                int akPlatz = 1;
+                foreach (var r in group.OrderBy(x => x.Platz))
+                {
+                    r.PlatzAK = akPlatz++;
+                }
+            }
 
+            // 👉 Änderung: Ursprüngliche Liste überschreiben
             records.Clear();
             records.AddRange(ranked);
         }

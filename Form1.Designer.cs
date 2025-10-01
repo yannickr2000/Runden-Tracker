@@ -188,7 +188,7 @@
             // resultGrid
             // 
             resultGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            resultGrid.Location = new Point(18, 406);
+            resultGrid.Location = new Point(18, 401);
             resultGrid.Margin = new Padding(4, 5, 4, 5);
             resultGrid.Name = "resultGrid";
             resultGrid.RowHeadersWidth = 51;
