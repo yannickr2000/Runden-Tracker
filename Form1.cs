@@ -311,8 +311,10 @@ namespace Rundenzeiten
 
         private void RankRecords(List<CSVRecord> records)
         {
-            // 👉 Änderung: Liste direkt sortieren
+            //Liste direkt sortieren
             var ranked = records
+                 // 1. nach Altersklasse (z.B. "U11", "U13", …)
+                .OrderBy(r => ExtractAgeClass(r.Klasse))
                 .OrderBy(r => r.Geschlecht.ToLower() == "männlich" || r.Geschlecht.ToLower() == "m" ? 0 : 1)
                 .ThenByDescending(r => r.Rundenzeiten.Count)
                 .ThenBy(r => r.Zeit.TotalSeconds)
@@ -321,14 +323,11 @@ namespace Rundenzeiten
             // .ThenBy(r => r.Zeit.TotalSeconds)               // dann nach Zeit
             // .ToList();
 
-            // 👉 Änderung: Platz setzen
+            //Platz setzen
             for (int i = 0; i < ranked.Count; i++)
                 ranked[i].Platz = i + 1;
-
-            // 👉 Änderung: PlatzAK berechnen
-            //foreach (var group in ranked.GroupBy(r => r.Klasse))
             
-            // PlatzAK getrennt nach Klasse UND Geschlecht
+            // PlatzAK getrennt nach Klasse UND Geschlecht / PlatzAK berechnen
             foreach (var group in ranked.GroupBy(r => new { r.Klasse, r.Geschlecht }))
             {
                 int akPlatz = 1;
@@ -341,6 +340,23 @@ namespace Rundenzeiten
             // 👉 Änderung: Ursprüngliche Liste überschreiben
             records.Clear();
             records.AddRange(ranked);
+        }
+
+        private object ExtractAgeClass(string klasse)
+        {
+            // Beispiel: "U11 Hobby" → 11
+            if (string.IsNullOrEmpty(klasse)) return int.MaxValue;
+
+            klasse = klasse.ToUpper();
+
+            if (klasse.StartsWith("u"))
+            {
+                string num = new string(klasse.Skip(1).TakeWhile(char.IsDigit).ToArray());
+                if (int.TryParse(num, out int age))
+                    return age;
+            }
+
+            return int.MaxValue; // falls keine U-Klasse erkannt
         }
 
         private List<CSVRecord> BuildRecords()
