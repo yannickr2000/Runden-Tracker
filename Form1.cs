@@ -6,6 +6,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -16,13 +17,26 @@ namespace Rundenzeiten
         private DateTime start = DateTime.MinValue;
         private DateTime end;
         private System.Windows.Forms.Timer countdownTimer;
-        private List<PersonEntry> entries;
+
+        private List<PersonEntry> entries = new List<PersonEntry>();
         private List<RoundEntry> roundEntries = new List<RoundEntry>();
-        private string resultFilePath; // = "Ergebnisse_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".csv";
+        private string resultFilePath = string.Empty;
+
+        //private System.Windows.Forms.ComboBox raceNameComboBox;                  // CS8618 fix
 
         public Form1()
         {
             InitializeComponent();
+
+            raceNameComboBox.Items.AddRange(new object[]
+            {
+             "CrossimBad",
+             "Wintercross",
+             "Gravelride",
+             "Test"
+            });
+            raceNameComboBox.SelectedIndex = -1;
+
 
             countdownTimer = new System.Windows.Forms.Timer();
             countdownTimer.Interval = 500;
@@ -51,8 +65,8 @@ namespace Rundenzeiten
         private void confirmDurationBtn_Click(object sender, EventArgs e)
         {
             starterListBtn.Enabled = true;
-            confirmDurationBtn.Enabled = false;
-            raceDuration.Enabled = false;
+            //confirmDurationBtn.Enabled = false;
+            //raceDuration.Enabled = false;
             remainingTime.Text = FormatSecondsToMMSS(Convert.ToInt32(raceDuration.Value * 60));
 
             confirmDurationBtn.BackColor = Color.LightGreen;
@@ -79,43 +93,37 @@ namespace Rundenzeiten
 
                 if (entries.Count > 1)
                 {
-                    // Dateiname setzen: Rennname + Klasse
-                    string klasse = entries.First().Klasse;     // nimmt die Klasse vom ersten Teilnehmer
-                    string rennen = "CrossImBad";               // hier kannst du später auch ein Textfeld nehmen
-                    resultFilePath = GetResultFilePath(rennen, klasse);
+                    string fileName = Path.GetFileNameWithoutExtension(filePath);
+                    string rennenNummer = ExtractRaceNumber(fileName);   // z.B. "6"
+                    resultFilePath = GetResultFilePath(rennenNummer);
 
                     saveCSV();
                     starterListLabel.Text = "Teilnehmer geladen";
                     starterListBtn.BackColor = Color.LightGreen;
-                    starterListBtn.Enabled = false;
+                    //starterListBtn.Enabled = false;
                     startRaceBtn.Enabled = true;
                 }
             }
         }
-        private string GetResultFilePath(string rennen, string klasse)
+
+        private string ExtractRaceNumber(string fileName)
+        {
+            // akzeptiert "Rennen6", "Rennen_6", "rennen 6"
+            var m = Regex.Match(fileName, @"[Rr]ennen[_ ]*(\d+)");
+            if (m.Success) return m.Groups[1].Value;
+
+            // Fallback: Zahl am Ende des Namens
+            m = Regex.Match(fileName, @"(\d+)$");
+            if (m.Success) return m.Groups[1].Value;
+
+            return "1";
+        }
+
+        private string GetResultFilePath(string rennenNummer)
         {
             string date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            // Alles in runden Klammern entfernen
-            int start = klasse.IndexOf('(');
-            if (start >= 0)
-            {
-                int end = klasse.IndexOf(')', start);
-                if (end > start)
-                {
-                    klasse = klasse.Remove(start, end - start + 1);
-                }
-            }
-
-            // Leerzeichen trimmen
-            klasse = klasse.Trim();
-
-            // Verbotene Zeichen im Dateinamen ersetzen
-            foreach (char c in Path.GetInvalidFileNameChars())
-            {
-                klasse = klasse.Replace(c, '_');
-                rennen = rennen.Replace(c, '_');
-            }
-            return $"Ergebnisse_{rennen}_{klasse}_{date}.csv";
+            string veranstaltung = raceNameComboBox.SelectedItem?.ToString() ?? "CrossImBad";
+            return $"Ergebnisse_{veranstaltung}_Rennen{rennenNummer}_{date}.csv";
         }
 
         private List<PersonEntry> ReadCsvFile(string path)
@@ -175,6 +183,16 @@ namespace Rundenzeiten
 
         private void startRaceBtn_Click(object sender, EventArgs e)
         {
+            // wurde eine Veranstaltung ausgewählt?
+            if (raceNameComboBox.SelectedIndex == -1)
+            {
+                MessageBox.Show("Bitte zuerst eine Veranstaltung auswählen!",
+                                "Hinweis",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                return; // Rennen nicht starten
+            }
+
             if (startRaceBtn.Text == "Rennen beenden")
             {
                 saveCSV();
@@ -188,6 +206,12 @@ namespace Rundenzeiten
             startRaceBtn.Text = "Rennen beenden";
             startNumberInput.Enabled = true;
             enterRoundBtn.Enabled = true;
+
+            //Sperren erst jetzt:
+            raceNameComboBox.Enabled = false;
+            starterListBtn.Enabled = false;
+            raceDuration.Enabled = false;         
+            confirmDurationBtn.Enabled = false;   
         }
 
         private void enterRoundBtn_Click(object sender, EventArgs e)
@@ -259,12 +283,12 @@ namespace Rundenzeiten
         {
             var table = new DataTable();
 
-            // 👉 Änderung: Zahlen als int speichern
+            //Zahlen als int speichern
             table.Columns.Add("Platz", typeof(int));
             table.Columns.Add("PlatzAK", typeof(int));
             table.Columns.Add("Startnummer", typeof(int));
 
-            // Rest bleibt String
+            //Rest bleibt String
             table.Columns.Add("Name", typeof(string));
             table.Columns.Add("Vorname", typeof(string));
             table.Columns.Add("Verein", typeof(string));
@@ -290,10 +314,10 @@ namespace Rundenzeiten
                 );
             }
 
-            // 👉 Änderung: DataView mit Sortierung nach Platz
+            //DataView mit Sortierung nach Platz
             var view = table.DefaultView;
             view.Sort = "Platz ASC";       // immer automatisch aufsteigend
-            resultGrid.DataSource = view;  // 👉 Änderung: View statt Tabelle binden
+            resultGrid.DataSource = view;  // View statt Tabelle binden
         }
 
         private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
@@ -313,20 +337,17 @@ namespace Rundenzeiten
         {
             //Liste direkt sortieren
             var ranked = records
-                 // 1. nach Altersklasse (z.B. "U11", "U13", …)
+                // 1. nach Altersklasse (z.B. "U11", "U13", …)
                 .OrderBy(r => ExtractAgeClass(r.Klasse))
                 .OrderBy(r => r.Geschlecht.ToLower() == "männlich" || r.Geschlecht.ToLower() == "m" ? 0 : 1)
                 .ThenByDescending(r => r.Rundenzeiten.Count)
                 .ThenBy(r => r.Zeit.TotalSeconds)
                 .ToList();
-            // .OrderByDescending(r => r.Rundenzeiten.Count)   // zuerst nach Runden
-            // .ThenBy(r => r.Zeit.TotalSeconds)               // dann nach Zeit
-            // .ToList();
 
             //Platz setzen
             for (int i = 0; i < ranked.Count; i++)
                 ranked[i].Platz = i + 1;
-            
+
             // PlatzAK getrennt nach Klasse UND Geschlecht / PlatzAK berechnen
             foreach (var group in ranked.GroupBy(r => new { r.Klasse, r.Geschlecht }))
             {
@@ -337,26 +358,35 @@ namespace Rundenzeiten
                 }
             }
 
-            // 👉 Änderung: Ursprüngliche Liste überschreiben
+            //Ursprüngliche Liste überschreiben
             records.Clear();
             records.AddRange(ranked);
         }
 
         private object ExtractAgeClass(string klasse)
         {
-            // Beispiel: "U11 Hobby" → 11
-            if (string.IsNullOrEmpty(klasse)) return int.MaxValue;
+            if (string.IsNullOrWhiteSpace(klasse))
+                return int.MaxValue;
 
-            klasse = klasse.ToUpper();
+            // Klammerzusätze entfernen, trimmen und auf Groß stellen
+            klasse = klasse.Trim().ToUpper();
+            int p1 = klasse.IndexOf('(');
+            if (p1 >= 0)
+            {
+                int p2 = klasse.IndexOf(')', p1);
+                if (p2 > p1) klasse = klasse.Remove(p1, p2 - p1 + 1).Trim();
+            }
 
-            if (klasse.StartsWith("u"))
+            // "U11", "U13", "U15 ..." → 11, 13, 15
+            if (klasse.StartsWith("U"))
             {
                 string num = new string(klasse.Skip(1).TakeWhile(char.IsDigit).ToArray());
                 if (int.TryParse(num, out int age))
                     return age;
             }
 
-            return int.MaxValue; // falls keine U-Klasse erkannt
+            // keine U-Klasse → ganz nach hinten
+            return int.MaxValue;
         }
 
         private List<CSVRecord> BuildRecords()
@@ -423,6 +453,11 @@ namespace Rundenzeiten
 
                 enterRound(startNumber);
             }
+        }
+
+        private void label6_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
