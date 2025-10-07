@@ -324,7 +324,7 @@ namespace Rundenzeiten
             // Links oben platzieren, klein
             // (rowIndex, rowOffsetPx, colIndex, colOffsetPx)
             pic.SetPosition(0, 2, 0, 2); // A1-Ecke, bisschen Abstand
-            pic.SetSize(120);            // Größe ca. wie im Screenshot
+            pic.SetSize(35);            // Größe ca. wie im Screenshot
         }
 
         private static string ToHhMmSs(object zeit)
@@ -375,6 +375,9 @@ namespace Rundenzeiten
             string[] header = { "Platz", "PlatzAK", "Startnummer", "Name", "Vorname", "Geschlecht", "Verein", "Klasse", "Zeit", "Rundenzeiten" };
             string logoPath = FindLogoPath();
 
+            // <- NEU: Master-Spaltenbreiten der Gesamtliste, werden später befüllt und auf Klassenblätter angewandt
+            double[] masterWidths = null;
+
             using (var package = new ExcelPackage())
             {
                 // ===== Blatt: Gesamt =====================================================================
@@ -393,7 +396,7 @@ namespace Rundenzeiten
                 wsAll.Cells["A2"].Style.Font.Size = 20;
                 wsAll.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                // Logo links oben
+                // Logo links oben (klein)
                 InsertLogo(wsAll, logoPath, "Gesamt");
 
                 // Kopfzeile ab Zeile 5
@@ -403,7 +406,7 @@ namespace Rundenzeiten
                     var cell = wsAll.Cells[headerRowAll, c + 1];
                     cell.Value = header[c];
                     cell.Style.Font.Bold = true;
-                    cell.Style.Font.Color.SetColor(Color.Black);
+                    cell.Style.Font.Color.SetColor(Color.Black);  // Schrift schwarz
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                     cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
@@ -435,7 +438,37 @@ namespace Rundenzeiten
                 }
 
                 wsAll.View.FreezePanes(headerRowAll + 1, 1); // Kopf fixieren
-                if (wsAll.Dimension != null) wsAll.Cells[wsAll.Dimension.Address].AutoFitColumns();
+
+                // DRUCK-geeignete Breiten + Masterbreiten erfassen
+                if (wsAll.Dimension != null)
+                {
+                    // Grund-AutoFit mit Grenzen
+                    wsAll.Cells[wsAll.Dimension.Address].AutoFitColumns(8, 28);
+
+                    // Exakte Wunschbreiten
+                    wsAll.Column(1).Width = 8;   // Platz
+                    wsAll.Column(2).Width = 10;   // PlatzAK
+                    wsAll.Column(3).Width = 14;  // Startnummer
+                    wsAll.Column(4).Width = 16;  // Name
+                    wsAll.Column(5).Width = 14;  // Vorname
+                    wsAll.Column(6).Width = 10;  // Geschlecht
+                    wsAll.Column(7).Width = 30;  // Verein
+                    wsAll.Column(8).Width = 8;  // Klasse
+                    wsAll.Column(9).Width = 10;  // Zeit
+                    wsAll.Column(10).Width = 32;  // Rundenzeiten
+
+                    // Lange Texte umbrechen
+                    wsAll.Cells[headerRowAll + 1, 7, rowAll - 1, 7].Style.WrapText = true;  // Verein
+                    wsAll.Cells[headerRowAll + 1, 10, rowAll - 1, 10].Style.WrapText = true;  // Rundenzeiten
+
+                    wsAll.Row(headerRowAll).Height = 20;
+
+                    // <- Masterbreiten sichern, damit alle Klassenblätter identisch sind
+                    masterWidths = new double[header.Length];
+                    for (int c = 1; c <= header.Length; c++)
+                        masterWidths[c - 1] = wsAll.Column(c).Width;
+                }
+
                 wsAll.PrinterSettings.Orientation = eOrientation.Landscape;
                 wsAll.PrinterSettings.FitToPage = true;
                 wsAll.PrinterSettings.FitToWidth = 1;
@@ -479,6 +512,7 @@ namespace Rundenzeiten
                         var cell = ws.Cells[headerRow, c + 1];
                         cell.Value = header[c];
                         cell.Style.Font.Bold = true;
+                        cell.Style.Font.Color.SetColor(Color.Black);  // Schrift schwarz
                         cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                         cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
                         cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
@@ -498,7 +532,7 @@ namespace Rundenzeiten
                         ws.Cells[row, 7].Value = r?.Verein ?? "";
                         ws.Cells[row, 8].Value = r?.Klasse ?? "";
                         ws.Cells[row, 9].Value = ToHhMmSs(r?.Zeit);
-                        ws.Cells[row, 10].Value = FormatLapList(r?.Rundenzeiten);  // <--- wichtig: ws, nicht wsAll!
+                        ws.Cells[row, 10].Value = FormatLapList(r?.Rundenzeiten);
                         row++;
                     }
 
@@ -511,7 +545,25 @@ namespace Rundenzeiten
                         tbl.TableStyle = TableStyles.Medium2;
                     }
 
-                    if (ws.Dimension != null) ws.Cells[ws.Dimension.Address].AutoFitColumns();
+                    // Breiten identisch zur Gesamtliste übernehmen
+                    if (ws.Dimension != null)
+                    {
+                        // optionales AutoFit zuerst
+                        ws.Cells[ws.Dimension.Address].AutoFitColumns(8, 28);
+
+                        if (masterWidths != null)
+                        {
+                            for (int c = 1; c <= header.Length; c++)
+                                ws.Column(c).Width = masterWidths[c - 1];
+                        }
+
+                        // gleiche Text-Optionen für Verein & Rundenzeiten
+                        ws.Cells[headerRow + 1, 7, row - 1, 7].Style.WrapText = true;
+                        ws.Cells[headerRow + 1, 10, row - 1, 10].Style.WrapText = true;
+
+                        ws.Row(headerRow).Height = 20;
+                    }
+
                     ws.View.FreezePanes(headerRow + 1, 1);
                     ws.PrinterSettings.Orientation = eOrientation.Landscape;
                     ws.PrinterSettings.FitToPage = true;
@@ -527,6 +579,7 @@ namespace Rundenzeiten
                 package.SaveAs(new FileInfo(excelPath));
             }
         }
+
 
 
 
@@ -548,7 +601,7 @@ namespace Rundenzeiten
             table.Columns.Add("Zeit", typeof(string));
             table.Columns.Add("Rundenzeiten", typeof(string));
 
-            // 👉 Hilfsspalten für Sortierung
+            //Hilfsspalten für Sortierung
             //table.Columns.Add("AK", typeof(int));          // numerisch aus Klasse
             table.Columns.Add("GeschlechtSort", typeof(int)); // 0 = m, 1 = w
             table.Columns.Add("AK", typeof(int));             // numerische Altersklasse
