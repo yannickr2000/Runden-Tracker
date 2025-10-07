@@ -127,7 +127,13 @@ namespace Rundenzeiten
         {
             string date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
             string veranstaltung = raceNameComboBox.SelectedItem?.ToString() ?? "CrossImBad";
-            return $"Ergebnisse_{veranstaltung}_Rennen{rennenNummer}_{date}.csv";
+
+            // Ordner ".\Ergebnisse" neben der EXE
+            string resultsDir = Path.Combine(Application.StartupPath, "Ergebnisse");
+            Directory.CreateDirectory(resultsDir); // sicherstellen, dass er existiert
+
+            string fileName = $"Ergebnisse_{veranstaltung}_Rennen{rennenNummer}_{date}.csv";
+            return Path.Combine(resultsDir, fileName);
         }
 
         private List<PersonEntry> ReadCsvFile(string path)
@@ -362,9 +368,12 @@ namespace Rundenzeiten
         {
             // Zieldatei
             string excelPath = Path.Combine(
-                Path.GetDirectoryName(filePath),
+                Path.GetDirectoryName(filePath)!,
                 Path.GetFileNameWithoutExtension(filePath) + "_Druck.xlsx"
             );
+
+            // Zielordner sicher anlegen
+            Directory.CreateDirectory(Path.GetDirectoryName(excelPath)!);
 
             // Veranstaltung & Rennnummer für die Überschrift
             string veranstaltung = raceNameComboBox?.SelectedItem?.ToString() ?? "CrossImBad";
@@ -375,7 +384,7 @@ namespace Rundenzeiten
             string[] header = { "Platz", "PlatzAK", "Startnummer", "Name", "Vorname", "Geschlecht", "Verein", "Klasse", "Zeit", "Rundenzeiten" };
             string logoPath = FindLogoPath();
 
-            // <- NEU: Master-Spaltenbreiten der Gesamtliste, werden später befüllt und auf Klassenblätter angewandt
+            // Master-Spaltenbreiten der Gesamtliste, werden später befüllt und auf Klassenblätter angewandt
             double[] masterWidths = null;
 
             using (var package = new ExcelPackage())
@@ -474,7 +483,7 @@ namespace Rundenzeiten
                 wsAll.PrinterSettings.FitToWidth = 1;
                 wsAll.PrinterSettings.FitToHeight = 0;
 
-                // ===== Pro Klasse ein eigenes Blatt ======================================================
+                // ====================== Pro Klasse ein eigenes Blatt =====================================
                 var groups = records.GroupBy(r => r?.Klasse ?? "Unbekannt")
                                     .OrderBy(g => g.Key);
 
@@ -652,14 +661,16 @@ namespace Rundenzeiten
         private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
         {
             var lines = new List<string> { header };
-
             foreach (var record in records)
             {
-                string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit.ToString(@"hh\:mm\:ss")} ({record.Rundenzeiten.Count} Runden);[{string.Join(", ", record.Rundenzeiten)}]";
+                string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit:hh\\:mm\\:ss} ({record.Rundenzeiten.Count} Runden);[{string.Join(", ", record.Rundenzeiten)}]";
                 lines.Add(line);
             }
 
-            File.WriteAllLines(filePath, lines, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            // 🔹 Zielordner sicher anlegen
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+            File.WriteAllLines(filePath, lines, new UTF8Encoding(true)); // UTF-8 mit BOM
         }
 
         private void RankRecords(List<CSVRecord> records)
