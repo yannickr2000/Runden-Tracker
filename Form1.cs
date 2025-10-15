@@ -25,22 +25,44 @@ namespace Rundenzeiten
         private List<PersonEntry> entries = new List<PersonEntry>();
         private List<RoundEntry> roundEntries = new List<RoundEntry>();
         private string resultFilePath = string.Empty;
+        // Wellenstarts
+        private DateTime raceStart = DateTime.MinValue;
+        private readonly Dictionary<string, DateTime> classStartTimes = new Dictionary<string, DateTime>();
 
-        //private System.Windows.Forms.ComboBox raceNameComboBox;                  // CS8618 fix
+        // Mehrfachstart (gleichzeitig, ohne Versatz)
+        private Button startSelectedClassesBtn;
+
+        // Helfer
+        private bool RaceRunning => startRaceBtn.Text == "Rennen beenden";
+        private bool IsClassStarted(string k) => !string.IsNullOrWhiteSpace(k) && classStartTimes.ContainsKey(k);
 
         public Form1()
         {
             InitializeComponent();
 
+            classMultiList.DrawMode = DrawMode.OwnerDrawFixed;
+            classMultiList.DrawItem += classMultiList_DrawItem;
+            classMultiList.MouseDown += classMultiList_MouseDown;
+
+
+            this.startClassBtn.Click += new System.EventHandler(this.startClassBtn_Click);
+
+            // Veranstaltung ändern -> UI umschalten
+            raceNameComboBox.SelectedIndexChanged += raceNameComboBox_SelectedIndexChanged;
+
+            // Veranstaltungsliste
             raceNameComboBox.Items.AddRange(new object[]
             {
-             "CrossimBad",
+             "CrossImBad",  // <-- Schreibweise vereinheitlicht
              "Wintercross",
              "Gravelride",
              "Test"
             });
             raceNameComboBox.SelectedIndex = -1;
 
+            // Ereignisse verknüpfen
+            classMultiList.SelectedIndexChanged += (s, e) => UpdateClassStartUIState();
+            //startSelectedClassesBtn.Click += startSelectedClassesBtn_Click;
 
             countdownTimer = new System.Windows.Forms.Timer();
             countdownTimer.Interval = 500;
@@ -95,16 +117,41 @@ namespace Rundenzeiten
                     return;
                 }
 
-                if (entries.Count > 1)
+                if (entries.Count >= 1)  // <= Achte: >= 1
                 {
                     string fileName = Path.GetFileNameWithoutExtension(filePath);
-                    string rennenNummer = ExtractRaceNumber(fileName);   // z.B. "6"
+                    string rennenNummer = ExtractRaceNumber(fileName);
                     resultFilePath = GetResultFilePath(rennenNummer);
+
+                    // ▼▼▼ Klassen befüllen ▼▼▼
+                    if (IsCrossImBadSelected())
+                    {
+                        var classes = entries
+                            .Select(e => e.Klasse)
+                            .Where(k => !string.IsNullOrWhiteSpace(k))
+                            .Distinct()
+                            .OrderBy(k => ExtractAgeClass(k))
+                            .ThenBy(k => k)
+                            .ToList();
+
+                        // ✅ HIER DEIN MEHRFACH-START-TEIL
+                        classMultiList.Items.Clear();
+                        foreach (var k in classes)
+                            classMultiList.Items.Add(k, false);
+                        classMultiList.Enabled = classes.Count > 0;
+                    }
+                    else
+                    {
+                        classMultiList.Items.Clear();
+                        classMultiList.Enabled = false;
+                    }
+
+                    UpdateClassStartUIState();
+                    UpdateClassStatusLabel();
 
                     saveCSV();
                     starterListLabel.Text = "Teilnehmer geladen";
                     starterListBtn.BackColor = Color.LightGreen;
-                    //starterListBtn.Enabled = false;
                     startRaceBtn.Enabled = true;
                 }
             }
@@ -178,6 +225,89 @@ namespace Rundenzeiten
 
             return result;
         }
+        private bool IsCrossImBadSelected()
+        {
+            return string.Equals(raceNameComboBox.SelectedItem?.ToString(), "CrossImBad", StringComparison.OrdinalIgnoreCase);
+        }
+        private void startClassBtn_Click(object sender, EventArgs e)
+        {
+            if (!IsCrossImBadSelected()) return;
+            if (!RaceRunning)
+            {
+                MessageBox.Show("Bitte zuerst das Rennen starten.", "Hinweis",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // 1) Kandidaten aus Mehrfachliste
+            var toStart = new List<string>();
+            if (classMultiList != null)
+                toStart.AddRange(classMultiList.CheckedItems.Cast<String>());
+
+            if (toStart.Count == 0)
+            {
+                MessageBox.Show("Bitte eine Klasse auswählen oder ankreuzen.", "Hinweis",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Nur noch nicht gestartete Klassen starten
+            var fresh = toStart.Where(k => !classStartTimes.ContainsKey(k)).Distinct().ToList();
+            if (fresh.Count == 0)
+            {
+                MessageBox.Show("Alle ausgewählten Klassen wurden bereits gestartet.", "Hinweis",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            DateTime t0 = DateTime.Now;
+            foreach (var k in fresh)
+                classStartTimes[k] = t0;
+
+            MessageBox.Show($"Gestartet: {string.Join(", ", fresh)} um {t0:HH:mm:ss}.",
+                "Klassen gestartet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // Optional: Häkchen entfernen für soeben gestartete Klassen
+            if (classMultiList != null)
+            {
+                for (int i = 0; i < classMultiList.Items.Count; i++)
+                {
+                    string k = classMultiList.Items[i].ToString();
+                    if (fresh.Contains(k))
+                        classMultiList.SetItemChecked(i, false);
+                }
+            }
+
+            UpdateClassStartUIState();
+            UpdateClassStatusLabel();
+            foreach (var k in toStart)
+            {
+                classStartTimes[k] = DateTime.Now;
+
+                // Eintrag in der Liste deaktivieren
+                int index = classMultiList.Items.IndexOf(k);
+                if (index >= 0)
+                     classMultiList.SetItemCheckState(index, CheckState.Indeterminate); // halb-transparentes Häkchen
+                    //classMultiList.SetItemChecked(index, false);
+            }
+            classMultiList.Invalidate();
+            UpdateClassStatusLabel();
+        }
+        private void classMultiList_MouseDown(object sender, MouseEventArgs e)
+        {
+            int index = classMultiList.IndexFromPoint(e.Location);
+            if (index < 0) return;
+
+            string klasse = classMultiList.Items[index].ToString();
+
+            // ❌ Wenn schon gestartet → Klick ignorieren
+            if (classStartTimes.ContainsKey(klasse))
+            {
+                // Kein Umschalten des Häkchens erlauben
+                e = null;
+                return;
+            }
+        }
 
         public static string FormatSecondsToMMSS(int totalSeconds)
         {
@@ -190,6 +320,99 @@ namespace Rundenzeiten
             string formatted = $"{minutes:D2}:{seconds:D2}";
             return isNegative ? "-" + formatted : formatted;
         }
+        private void raceNameComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateClassStartUIState();
+        }
+
+        private void UpdateClassStartUIState()
+        {
+            bool canUse = IsCrossImBadSelected() && entries != null && entries.Count > 0;
+            bool anyFreshChecked = false;
+            if (classMultiList != null)
+            {
+                classMultiList.Enabled = canUse;
+                var checkedItems = classMultiList.CheckedItems.Cast<string>().ToList();
+                anyFreshChecked = checkedItems.Any(k => !classStartTimes.ContainsKey(k));
+            }
+        }
+        private void UpdateClassStatusLabel()
+        {
+            if (classStatusLabel == null) return;
+
+            bool ready = IsCrossImBadSelected() && entries != null && entries.Count > 0
+                         && classMultiList != null && classMultiList.Items.Count > 0;
+
+            if (!ready)
+            {
+                classStatusLabel.Text = "";
+                return;
+            }
+
+            var allClasses = classMultiList.Items.Cast<object>()
+                                .Select(o => o?.ToString())
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Distinct()
+                                .OrderBy(k => ExtractAgeClass(k))
+                                .ThenBy(k => k)
+                                .ToList();
+
+            var started = new List<string>();
+            var open = new List<string>();
+
+            foreach (var k in allClasses)
+            {
+                if (classStartTimes.TryGetValue(k, out var t))
+                    started.Add($"{k} ({t:HH:mm:ss})");
+                else
+                    open.Add(k);
+            }
+
+            var sb = new StringBuilder();
+
+            if (started.Count > 0)
+            {
+                sb.AppendLine("✅ gestartet:");
+                foreach (var s in started)
+                    sb.AppendLine("• " + s);
+            }
+
+            if (open.Count > 0)
+            {
+                if (started.Count > 0)
+                    //sb.AppendLine(); // nur eine Zeile Abstand, optional: kannst du löschen wenn du gar keine willst
+                sb.AppendLine("⏱️ offen:");
+                foreach (var o in open)
+                    sb.AppendLine("• " + o);
+            }
+
+            if (started.Count == 0 && open.Count > 0 && RaceRunning)
+                sb.AppendLine("(wähle Klassen und drücke „Klasse starten“)");
+
+            classStatusLabel.Text = sb.ToString().TrimEnd();
+        }
+        private void classMultiList_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+
+            string klasse = classMultiList.Items[e.Index].ToString();
+            bool started = classStartTimes.ContainsKey(klasse);
+
+            // Hintergrund zeichnen
+            e.DrawBackground();
+
+            // Schriftfarbe anpassen
+            Color textColor = started ? Color.Gray : SystemColors.ControlText;
+            using (Brush b = new SolidBrush(textColor))
+            {
+                e.Graphics.DrawString(klasse, e.Font, b, e.Bounds);
+            }
+
+            // Wenn Checkbox aktiv ist → selbst zeichnen
+            if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+                e.DrawFocusRectangle();
+        }
+
 
         private void startRaceBtn_Click(object sender, EventArgs e)
         {
@@ -210,6 +433,19 @@ namespace Rundenzeiten
             }
 
             start = DateTime.Now;
+            raceStart = start;
+
+            if (IsCrossImBadSelected())
+            {
+                startClassBtn.Enabled = true; // jetzt dürfen Klassen manuell gestartet werden
+            }
+            else
+            {
+                startClassBtn.Enabled = false;
+                classStartTimes.Clear();
+
+            }
+
             end = start.AddMinutes(Convert.ToInt32(raceDuration.Value));
 
             startRaceBtn.BackColor = Color.Red;
@@ -220,8 +456,10 @@ namespace Rundenzeiten
             //Sperren erst jetzt:
             raceNameComboBox.Enabled = false;
             starterListBtn.Enabled = false;
-            raceDuration.Enabled = false;         
-            confirmDurationBtn.Enabled = false;   
+            raceDuration.Enabled = false;
+            confirmDurationBtn.Enabled = false;
+            UpdateClassStartUIState();
+
         }
 
         private void enterRoundBtn_Click(object sender, EventArgs e)
@@ -264,16 +502,34 @@ namespace Rundenzeiten
             List<RoundEntry> personEntries = roundEntries.Where(x => x.Startnummer == person.Startnummer).ToList();
             double toAdd = personEntries.Select(x => x.Time.TotalSeconds).Sum();
 
-            roundResultLabel.Text = $"Eingetragen - {person.Startnummer} - {Math.Round((DateTime.Now - start.AddSeconds(toAdd)).TotalSeconds, 1)}s";
+            TimeSpan lapTime;
+
+            if (IsCrossImBadSelected())
+            {
+                if (!classStartTimes.TryGetValue(person.Klasse, out DateTime classStart))
+                {
+                    roundResultLabel.Text = $"Klasse \"{person.Klasse}\" noch nicht gestartet!";
+                    roundResultLabel.ForeColor = Color.Red;
+                    return;
+                }
+                lapTime = DateTime.Now - classStart - TimeSpan.FromSeconds(toAdd);
+            }
+            else
+            {
+                lapTime = DateTime.Now - start - TimeSpan.FromSeconds(toAdd);
+            }
+
+            roundResultLabel.Text = $"Eingetragen - {person.Startnummer} - {Math.Round(lapTime.TotalSeconds, 1)}s";
             roundResultLabel.ForeColor = Color.Green;
 
             roundEntries.Add(new RoundEntry()
             {
                 Startnummer = person.Startnummer,
-                Time = DateTime.Now - start.AddSeconds(toAdd)
+                Time = lapTime
             });
 
             saveCSV();
+
         }
 
         private void saveCSV()
@@ -292,9 +548,6 @@ namespace Rundenzeiten
             DisplayInGrid(records);
         }
 
-        // File.WriteAllLines(printablePath, lines, Encoding.UTF8);
-        //}
-        // Sucht im EXE-Ordner (\Vorlagen\) nach einer Logo-Datei (png/jpg/jpeg)
         private string FindLogoPath()
         {
             string baseDir = Path.Combine(Application.StartupPath, "Vorlagen");
@@ -318,8 +571,6 @@ namespace Rundenzeiten
             return anyImg;
         }
 
-        // Fügt das Logo oben links ein (Position & Größe leicht anpassbar)
-        
         private void InsertLogo(ExcelWorksheet ws, string logoPath, string uniqueNameSuffix = "")
         {
             if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath)) return;
@@ -339,6 +590,7 @@ namespace Rundenzeiten
             if (zeit is TimeSpan ts) return ts.ToString(@"hh\:mm\:ss");
             return TimeSpan.TryParse(zeit.ToString(), out var t) ? t.ToString(@"hh\:mm\:ss") : zeit.ToString();
         }
+
         private static string SanitizeName(string s, int maxLen = 31)
         {
             if (string.IsNullOrWhiteSpace(s)) s = "Unbekannt";
@@ -347,21 +599,17 @@ namespace Rundenzeiten
             if (s.Length > maxLen) s = s.Substring(0, maxLen);
             return string.IsNullOrWhiteSpace(s) ? "Klasse" : s;
         }
-        // ======= NEU: Excel-Ausgabe mit einem Blatt pro Klasse =======
+
         private static string FormatLapList(IList<double> lapsSec)
         {
-            if (lapsSec == null) return "";
-            var parts = new List<string>();
-            foreach (var v in lapsSec)
-            {
-                double d = v;
-                // Ungültige Werte abfangen
-                if (double.IsNaN(d) || double.IsInfinity(d) || d < 0 || d > TimeSpan.MaxValue.TotalSeconds)
-                    d = 0;
-
-                parts.Add(TimeSpan.FromSeconds(d).ToString(@"mm\:ss")); // nur EIN Backslash vor dem Doppelpunkt
-            }
-            return string.Join(", ", parts);
+            if (lapsSec == null || lapsSec.Count == 0) return "";
+            return string.Join(", ",
+                lapsSec.Select(v =>
+                {
+                    double d = (double.IsFinite(v) && v >= 0 && v <= TimeSpan.MaxValue.TotalSeconds) ? v : 0;
+                    return TimeSpan.FromSeconds(d).ToString(@"mm\:ss");
+                })
+            );
         }
 
         private void SaveToExcelPerClass(List<CSVRecord> records, string filePath)
@@ -589,19 +837,16 @@ namespace Rundenzeiten
             }
         }
 
-
-
-
         private void DisplayInGrid(List<CSVRecord> records)
         {
             var table = new DataTable();
 
-            //Zahlen als int speichern
+            // Zahlen
             table.Columns.Add("Platz", typeof(int));
             table.Columns.Add("PlatzAK", typeof(int));
             table.Columns.Add("Startnummer", typeof(int));
 
-            //Rest bleibt String
+            // Texte
             table.Columns.Add("Name", typeof(string));
             table.Columns.Add("Vorname", typeof(string));
             table.Columns.Add("Verein", typeof(string));
@@ -610,52 +855,56 @@ namespace Rundenzeiten
             table.Columns.Add("Zeit", typeof(string));
             table.Columns.Add("Rundenzeiten", typeof(string));
 
-            //Hilfsspalten für Sortierung
-            //table.Columns.Add("AK", typeof(int));          // numerisch aus Klasse
-            table.Columns.Add("GeschlechtSort", typeof(int)); // 0 = m, 1 = w
-            table.Columns.Add("AK", typeof(int));             // numerische Altersklasse
+            // Hilfsspalten für Sortierung
+            table.Columns.Add("GeschlechtSort", typeof(int)); // 0=m, 1=w, 2=sonst
+            table.Columns.Add("AK", typeof(int));             // numerisch aus Klasse
+
+            int GenderKey(string g)
+            {
+                if (string.IsNullOrWhiteSpace(g)) return 2;
+                g = g.Trim().ToLowerInvariant();
+                if (g.StartsWith("m")) return 0;
+                if (g.StartsWith("w")) return 1;
+                return 2;
+            }
+
             foreach (var r in records)
             {
-                int startnr;
-                int.TryParse(r.Startnummer, out startnr);
-                // Altersklasse extrahieren
+                int.TryParse(r.Startnummer, out var startnr);
                 int ak = ExtractAgeClass(r.Klasse);
+                int gSort = GenderKey(r.Geschlecht);
 
-                // Geschlecht sortierbar machen (m vor w)
-                int gSort = 2;
-                if (!string.IsNullOrEmpty(r.Geschlecht))
-                {
-                    if (r.Geschlecht.ToLower().StartsWith("m")) gSort = 0;
-                    else if (r.Geschlecht.ToLower().StartsWith("w")) gSort = 1;
-                }
-
-                // Rundenzeiten schön als mm,ss formatieren
+                // Rundenzeiten "mm:ss"
                 string rundenText = "[" + string.Join(", ",
-                    r.Rundenzeiten.Select(sec => TimeSpan.FromSeconds(sec).ToString(@"mm\,ss"))
+                    (r.Rundenzeiten ?? new List<double>())
+                        .Select(sec => TimeSpan.FromSeconds(double.IsFinite(sec) && sec >= 0 ? sec : 0).ToString(@"mm\:ss"))
                 ) + "]";
 
                 table.Rows.Add(
                     r.Platz,
                     r.PlatzAK,
                     startnr,
-                    r.Name,
-                    r.Vorname,
-                    r.Verein,
-                    r.Geschlecht, 
-                    r.Klasse,
-                    r.Zeit.ToString(@"hh\:mm\:ss") + $" ({r.Rundenzeiten.Count} Runden)",
-                     rundenText, //$"[{string.Join(", ", r.Rundenzeiten)}]",
-                    ak, gSort
+                    r.Name ?? "",
+                    r.Vorname ?? "",
+                    r.Verein ?? "",
+                    r.Geschlecht ?? "",
+                    r.Klasse ?? "",
+                    r.Zeit.ToString(@"hh\:mm\:ss") + $" ({r.Rundenzeiten?.Count ?? 0} Runden)",
+                    rundenText,
+                    gSort,       // <-- Reihenfolge korrigiert (erst GeschlechtSort)
+                    ak           // <-- dann AK
                 );
             }
 
-            //DataView mit Sortierung nach Platz
             var view = table.DefaultView;
-            view.Sort = "Klasse ASC, Geschlecht ASC, PlatzAK ASC";      // immer automatisch aufsteigend
+            // Sortiert: Klasse ↑, m vor w, PlatzAK ↑
+            view.Sort = "Klasse ASC, GeschlechtSort ASC, PlatzAK ASC";
+
             resultGrid.DataSource = view;
-            //Hilfsspalten ausblenden (nur für Sortierung da)
-            resultGrid.Columns["AK"].Visible = false;
-            resultGrid.Columns["GeschlechtSort"].Visible = false;
+
+            // Hilfsspalten ausblenden
+            if (resultGrid.Columns.Contains("AK")) resultGrid.Columns["AK"].Visible = false;
+            if (resultGrid.Columns.Contains("GeschlechtSort")) resultGrid.Columns["GeschlechtSort"].Visible = false;
         }
 
         private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
@@ -663,42 +912,51 @@ namespace Rundenzeiten
             var lines = new List<string> { header };
             foreach (var record in records)
             {
-                string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit:hh\\:mm\\:ss} ({record.Rundenzeiten.Count} Runden);[{string.Join(", ", record.Rundenzeiten)}]";
+                var laps = record.Rundenzeiten ?? new List<double>();
+                string lapsRaw = "[" + string.Join(", ", laps.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture))) + "]";
+                string line =
+                    $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};" +
+                    $"{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};" +
+                    $"{record.Zeit:hh\\:mm\\:ss} ({laps.Count} Runden);{lapsRaw}";
                 lines.Add(line);
             }
 
-            // 🔹 Zielordner sicher anlegen
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-
             File.WriteAllLines(filePath, lines, new UTF8Encoding(true)); // UTF-8 mit BOM
         }
 
+
         private void RankRecords(List<CSVRecord> records)
         {
-            //Liste direkt sortieren
+            // Geschlecht zu Rang 0/1 m/w (null-sicher)
+            int GenderKey(string g)
+            {
+                if (string.IsNullOrWhiteSpace(g)) return 2;
+                g = g.Trim().ToLowerInvariant();
+                if (g.StartsWith("m")) return 0; // männlich/m
+                if (g.StartsWith("w")) return 1; // weiblich/w
+                return 2;
+            }
+
             var ranked = records
-                // 1. nach Altersklasse (z.B. "U11", "U13", …)
-                .OrderBy(r => ExtractAgeClass(r.Klasse))
-                .OrderBy(r => r.Geschlecht.ToLower() == "männlich" || r.Geschlecht.ToLower() == "m" ? 0 : 1)
-                .ThenByDescending(r => r.Rundenzeiten.Count)
-                .ThenBy(r => r.Zeit.TotalSeconds)
+                .OrderBy(r => ExtractAgeClass(r.Klasse))               // Klasse (U11, U13, …)
+                .ThenBy(r => GenderKey(r.Geschlecht))                  // m vor w
+                .ThenByDescending(r => r.Rundenzeiten?.Count ?? 0)     // mehr Runden zuerst
+                .ThenBy(r => r.Zeit.TotalSeconds)                      // schnellere Zeit zuerst
                 .ToList();
 
-            //Platz setzen
+            // Platz (gesamt)
             for (int i = 0; i < ranked.Count; i++)
                 ranked[i].Platz = i + 1;
 
-            // PlatzAK getrennt nach Klasse UND Geschlecht / PlatzAK berechnen
-            foreach (var group in ranked.GroupBy(r => new { r.Klasse, r.Geschlecht }))
+            // PlatzAK je Klasse UND Geschlecht
+            foreach (var group in ranked.GroupBy(r => new { r.Klasse, Key = GenderKey(r.Geschlecht) }))
             {
                 int akPlatz = 1;
                 foreach (var r in group.OrderBy(x => x.Platz))
-                {
                     r.PlatzAK = akPlatz++;
-                }
             }
 
-            //Ursprüngliche Liste überschreiben
             records.Clear();
             records.AddRange(ranked);
         }
@@ -798,6 +1056,16 @@ namespace Rundenzeiten
         }
 
         private void label6_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void classStatusLabel_Click(object sender, EventArgs e)
         {
 
         }

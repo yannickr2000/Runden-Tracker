@@ -43,13 +43,16 @@
             resultGrid = new DataGridView();
             pictureBox1 = new PictureBox();
             panel1 = new Panel();
+            classStatusLabel = new Label();
+            classMultiList = new CheckedListBox();
+            startClassBtn = new Button();
             startNumberInput = new TextBox();
             panel4 = new Panel();
+            label6 = new Label();
             raceNameComboBox = new ComboBox();
             label4 = new Label();
             panel2 = new Panel();
             label5 = new Label();
-            label6 = new Label();
             ((System.ComponentModel.ISupportInitialize)raceDuration).BeginInit();
             ((System.ComponentModel.ISupportInitialize)resultGrid).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
@@ -129,10 +132,10 @@
             // startRaceBtn
             // 
             startRaceBtn.Enabled = false;
-            startRaceBtn.Location = new Point(949, 228);
+            startRaceBtn.Location = new Point(949, 123);
             startRaceBtn.Margin = new Padding(4, 5, 4, 5);
             startRaceBtn.Name = "startRaceBtn";
-            startRaceBtn.Size = new Size(205, 84);
+            startRaceBtn.Size = new Size(205, 51);
             startRaceBtn.TabIndex = 7;
             startRaceBtn.Text = "Rennen starten";
             startRaceBtn.TextImageRelation = TextImageRelation.ImageAboveText;
@@ -143,7 +146,7 @@
             // 
             remainingTime.AutoSize = true;
             remainingTime.Font = new Font("Microsoft Sans Serif", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            remainingTime.Location = new Point(958, 136);
+            remainingTime.Location = new Point(970, 22);
             remainingTime.Margin = new Padding(4, 0, 4, 0);
             remainingTime.Name = "remainingTime";
             remainingTime.Size = new Size(184, 69);
@@ -201,18 +204,22 @@
             // 
             pictureBox1.BorderStyle = BorderStyle.FixedSingle;
             pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
-            pictureBox1.Location = new Point(1172, 72);
+            pictureBox1.Location = new Point(1178, 16);
             pictureBox1.Margin = new Padding(3, 4, 3, 4);
             pictureBox1.Name = "pictureBox1";
             pictureBox1.Size = new Size(196, 202);
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.TabIndex = 15;
             pictureBox1.TabStop = false;
+            pictureBox1.Click += pictureBox1_Click;
             // 
             // panel1
             // 
             panel1.BackColor = SystemColors.ButtonHighlight;
             panel1.BorderStyle = BorderStyle.FixedSingle;
+            panel1.Controls.Add(classStatusLabel);
+            panel1.Controls.Add(classMultiList);
+            panel1.Controls.Add(startClassBtn);
             panel1.Controls.Add(startNumberInput);
             panel1.Controls.Add(panel4);
             panel1.Controls.Add(panel2);
@@ -228,6 +235,35 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(1392, 353);
             panel1.TabIndex = 16;
+            // 
+            // classStatusLabel
+            // 
+            classStatusLabel.AutoSize = true;
+            classStatusLabel.Location = new Point(1178, 236);
+            classStatusLabel.Name = "classStatusLabel";
+            classStatusLabel.Size = new Size(0, 20);
+            classStatusLabel.TabIndex = 25;
+            classStatusLabel.Click += classStatusLabel_Click;
+            // 
+            // classMultiList
+            // 
+            classMultiList.Enabled = false;
+            classMultiList.FormattingEnabled = true;
+            classMultiList.Location = new Point(949, 238);
+            classMultiList.Name = "classMultiList";
+            classMultiList.Size = new Size(205, 92);
+            classMultiList.TabIndex = 24;
+            // 
+            // startClassBtn
+            // 
+            startClassBtn.Enabled = false;
+            startClassBtn.Location = new Point(949, 188);
+            startClassBtn.Name = "startClassBtn";
+            startClassBtn.Size = new Size(205, 37);
+            startClassBtn.TabIndex = 22;
+            startClassBtn.Text = "Klassen Starten";
+            startClassBtn.UseVisualStyleBackColor = true;
+            startClassBtn.Click += startClassBtn_Click;
             // 
             // startNumberInput
             // 
@@ -256,6 +292,18 @@
             panel4.Name = "panel4";
             panel4.Size = new Size(319, 318);
             panel4.TabIndex = 0;
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            label6.Location = new Point(17, 76);
+            label6.Margin = new Padding(4, 0, 4, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(120, 23);
+            label6.TabIndex = 18;
+            label6.Text = "Veranstaltung:";
+            label6.Click += label6_Click;
             // 
             // raceNameComboBox
             // 
@@ -298,18 +346,6 @@
             label5.Size = new Size(530, 78);
             label5.TabIndex = 17;
             label5.Text = "Runden-Tracker";
-            // 
-            // label6
-            // 
-            label6.AutoSize = true;
-            label6.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label6.Location = new Point(17, 76);
-            label6.Margin = new Padding(4, 0, 4, 0);
-            label6.Name = "label6";
-            label6.Size = new Size(120, 23);
-            label6.TabIndex = 18;
-            label6.Text = "Veranstaltung:";
-            label6.Click += label6_Click;
             // 
             // Form1
             // 
@@ -355,6 +391,9 @@
         private TextBox startNumberInput;
         private ComboBox raceNameComboBox;
         private Label label6;
+        private Button startClassBtn;
+        private CheckedListBox classMultiList;
+        private Label classStatusLabel;
     }
 }
 
