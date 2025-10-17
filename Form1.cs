@@ -27,14 +27,15 @@ namespace Rundenzeiten
         private string resultFilePath = string.Empty;
         // Wellenstarts
         private DateTime raceStart = DateTime.MinValue;
-        private readonly Dictionary<string, DateTime> classStartTimes = new Dictionary<string, DateTime>();
-
+        private readonly Dictionary<string, DateTime> classStartTimes =
+           new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         // Mehrfachstart (gleichzeitig, ohne Versatz)
         private Button startSelectedClassesBtn;
 
         // Helfer
         private bool RaceRunning => startRaceBtn.Text == "Rennen beenden";
-        private bool IsClassStarted(string k) => !string.IsNullOrWhiteSpace(k) && classStartTimes.ContainsKey(k);
+        //private bool IsClassStarted(string k) => !string.IsNullOrWhiteSpace(k) && classStartTimes.ContainsKey(k);
+        private static string Norm(string s) => (s ?? string.Empty).Trim();
 
         public Form1()
         {
@@ -42,6 +43,7 @@ namespace Rundenzeiten
 
             classMultiList.DrawMode = DrawMode.OwnerDrawFixed;
             classMultiList.DrawItem += classMultiList_DrawItem;
+            classMultiList.ItemCheck += classMultiList_ItemCheck;   // blockt Umschalten bei gestartetenclassMultiList.ItemCheck += classMultiList_ItemCheck;   // blockt Umschalten bei gestarteten
             classMultiList.MouseDown += classMultiList_MouseDown;
 
 
@@ -100,62 +102,85 @@ namespace Rundenzeiten
 
         private void starterListBtn_Click(object sender, EventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog
+            var ofd = new OpenFileDialog
             {
                 Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
                 Title = "Select CSV file"
             };
 
-            if (ofd.ShowDialog() == DialogResult.OK)
+            if (ofd.ShowDialog() != DialogResult.OK)
+                return;
+
+            string filePath = ofd.FileName;
+
+            // Starter einlesen
+            entries = ReadCsvFile(filePath);
+            if (entries == null)
             {
-                string filePath = ofd.FileName;
-                entries = ReadCsvFile(filePath);
-
-                if (entries == null)
-                {
-                    starterListLabel.Text = "Fehler: Doppelte Startnummern";
-                    return;
-                }
-
-                if (entries.Count >= 1)  // <= Achte: >= 1
-                {
-                    string fileName = Path.GetFileNameWithoutExtension(filePath);
-                    string rennenNummer = ExtractRaceNumber(fileName);
-                    resultFilePath = GetResultFilePath(rennenNummer);
-
-                    // ▼▼▼ Klassen befüllen ▼▼▼
-                    if (IsCrossImBadSelected())
-                    {
-                        var classes = entries
-                            .Select(e => e.Klasse)
-                            .Where(k => !string.IsNullOrWhiteSpace(k))
-                            .Distinct()
-                            .OrderBy(k => ExtractAgeClass(k))
-                            .ThenBy(k => k)
-                            .ToList();
-
-                        // ✅ HIER DEIN MEHRFACH-START-TEIL
-                        classMultiList.Items.Clear();
-                        foreach (var k in classes)
-                            classMultiList.Items.Add(k, false);
-                        classMultiList.Enabled = classes.Count > 0;
-                    }
-                    else
-                    {
-                        classMultiList.Items.Clear();
-                        classMultiList.Enabled = false;
-                    }
-
-                    UpdateClassStartUIState();
-                    UpdateClassStatusLabel();
-
-                    saveCSV();
-                    starterListLabel.Text = "Teilnehmer geladen";
-                    starterListBtn.BackColor = Color.LightGreen;
-                    startRaceBtn.Enabled = true;
-                }
+                starterListLabel.Text = "Fehler: Doppelte Startnummern";
+                return;
             }
+
+            if (entries.Count < 1)
+            {
+                starterListLabel.Text = "Keine Teilnehmer gefunden";
+                return;
+            }
+
+            // Ergebnis-Dateipfad ableiten
+            string fileName = Path.GetFileNameWithoutExtension(filePath);
+            string rennenNummer = ExtractRaceNumber(fileName);
+            resultFilePath = GetResultFilePath(rennenNummer);
+
+            // ------ Klassenliste befüllen (nur CrossImBad nutzt Klassenstarts) ------
+            if (IsCrossImBadSelected())
+            {
+                // Klassen-Namen normalisieren, Duplikate case-insensitiv entfernen, sinnvoll sortieren
+                var classes = entries
+                    .Select(e => Norm(e.Klasse))
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => ExtractAgeClass(k))
+                    .ThenBy(k => k, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                // Mehrfachliste füllen
+                classMultiList.Items.Clear();
+                foreach (var k in classes)
+                    classMultiList.Items.Add(k, false);
+
+                classMultiList.Enabled = classes.Count > 0;
+
+                // Bereits vorher gestartete Klassen sofort „sperren“ (grau + nicht anklickbar)
+                for (int i = 0; i < classMultiList.Items.Count; i++)
+                {
+                    string name = Norm(classMultiList.Items[i]?.ToString());
+                    if (classStartTimes.ContainsKey(name))
+                    {
+                        classMultiList.SetItemCheckState(i, CheckState.Indeterminate);
+                        classMultiList.SetItemChecked(i, false);
+                    }
+                }
+                classMultiList.Invalidate();
+            }
+            else
+            {
+                // Bei anderen Veranstaltungen ist die Klassenliste aus
+                classMultiList.Items.Clear();
+                classMultiList.Enabled = false;
+            }
+            // ------------------------------------------------------------------------
+
+            // CSV/Excel sofort einmal erzeugen & UI-Status aktualisieren
+            saveCSV();
+            starterListLabel.Text = "Teilnehmer geladen";
+            starterListBtn.BackColor = Color.LightGreen;
+            startRaceBtn.Enabled = true;
+
+            UpdateClassStartUIState();
+            UpdateClassStatusLabel();
         }
+
 
         private string ExtractRaceNumber(string fileName)
         {
@@ -231,82 +256,90 @@ namespace Rundenzeiten
         }
         private void startClassBtn_Click(object sender, EventArgs e)
         {
+            // still arbeiten, keine Popups
             if (!IsCrossImBadSelected()) return;
-            if (!RaceRunning)
-            {
-                MessageBox.Show("Bitte zuerst das Rennen starten.", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
+            if (!RaceRunning) return;
+            if (classMultiList == null || classMultiList.Items.Count == 0) return;
 
-            // 1) Kandidaten aus Mehrfachliste
-            var toStart = new List<string>();
-            if (classMultiList != null)
-                toStart.AddRange(classMultiList.CheckedItems.Cast<String>());
+            // Angekreuzte Klassen einsammeln (normalisiert, doppelte vermeiden)
+            var toStart = classMultiList.CheckedItems
+                .Cast<object>()
+                .Select(it => Norm(it?.ToString()))                     // Norm = (s??"").Trim()
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
             if (toStart.Count == 0)
-            {
-                MessageBox.Show("Bitte eine Klasse auswählen oder ankreuzen.", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
-            }
 
-            // Nur noch nicht gestartete Klassen starten
-            var fresh = toStart.Where(k => !classStartTimes.ContainsKey(k)).Distinct().ToList();
+            // Nur Klassen starten, die NOCH NICHT gestartet sind
+            var fresh = toStart.Where(k => !classStartTimes.ContainsKey(k)).ToList();
             if (fresh.Count == 0)
-            {
-                MessageBox.Show("Alle ausgewählten Klassen wurden bereits gestartet.", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
-            }
 
-            DateTime t0 = DateTime.Now;
+            var t0 = DateTime.Now;
+
+            // Startzeit nur für neue Klassen setzen (niemals überschreiben)
             foreach (var k in fresh)
                 classStartTimes[k] = t0;
 
-            MessageBox.Show($"Gestartet: {string.Join(", ", fresh)} um {t0:HH:mm:ss}.",
-                "Klassen gestartet", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            // Optional: Häkchen entfernen für soeben gestartete Klassen
-            if (classMultiList != null)
+            // UI: frisch gestartete in der Liste sperren & Häkchen entfernen
+            for (int i = 0; i < classMultiList.Items.Count; i++)
             {
-                for (int i = 0; i < classMultiList.Items.Count; i++)
+                var name = Norm(classMultiList.Items[i]?.ToString());
+                if (fresh.Contains(name, StringComparer.OrdinalIgnoreCase))
                 {
-                    string k = classMultiList.Items[i].ToString();
-                    if (fresh.Contains(k))
-                        classMultiList.SetItemChecked(i, false);
+                    classMultiList.SetItemCheckState(i, CheckState.Indeterminate); // „ausgegraut“
+                    classMultiList.SetItemChecked(i, false);                       // kein Haken mehr
                 }
             }
 
-            UpdateClassStartUIState();
-            UpdateClassStatusLabel();
-            foreach (var k in toStart)
-            {
-                classStartTimes[k] = DateTime.Now;
-
-                // Eintrag in der Liste deaktivieren
-                int index = classMultiList.Items.IndexOf(k);
-                if (index >= 0)
-                     classMultiList.SetItemCheckState(index, CheckState.Indeterminate); // halb-transparentes Häkchen
-                    //classMultiList.SetItemChecked(index, false);
-            }
+            // neu zeichnen & Status aktualisieren
             classMultiList.Invalidate();
             UpdateClassStatusLabel();
+            UpdateClassStartUIState();
         }
+
+
+        //gestartete Klassen blockieren
         private void classMultiList_MouseDown(object sender, MouseEventArgs e)
         {
             int index = classMultiList.IndexFromPoint(e.Location);
             if (index < 0) return;
 
-            string klasse = classMultiList.Items[index].ToString();
-
-            // ❌ Wenn schon gestartet → Klick ignorieren
+            string klasse = Norm(classMultiList.Items[index]?.ToString());
             if (classStartTimes.ContainsKey(klasse))
             {
-                // Kein Umschalten des Häkchens erlauben
-                e = null;
+                // Klick ignorieren (kein Umschalten)
                 return;
             }
+        }
+        private void classMultiList_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            // Name der Klasse holen
+            string name = Norm(classMultiList.Items[e.Index]?.ToString());
+
+            // Wenn schon gestartet → gewünschte neue Zustandsänderung ignorieren
+            if (classStartTimes.ContainsKey(name))
+            {
+                e.NewValue = e.CurrentValue; // verhindert das Umschalten (Maus & Tastatur)
+            }
+        }
+        private void classMultiList_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+
+            string name = Norm(classMultiList.Items[e.Index]?.ToString());
+            bool started = classStartTimes.ContainsKey(name);
+
+            e.DrawBackground();
+
+            using (var brush = new SolidBrush(started ? Color.Gray : SystemColors.ControlText))
+            {
+                e.Graphics.DrawString(name, e.Font, brush, e.Bounds);
+            }
+
+            e.DrawFocusRectangle();
         }
 
         public static string FormatSecondsToMMSS(int totalSeconds)
@@ -391,28 +424,6 @@ namespace Rundenzeiten
 
             classStatusLabel.Text = sb.ToString().TrimEnd();
         }
-        private void classMultiList_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            if (e.Index < 0) return;
-
-            string klasse = classMultiList.Items[e.Index].ToString();
-            bool started = classStartTimes.ContainsKey(klasse);
-
-            // Hintergrund zeichnen
-            e.DrawBackground();
-
-            // Schriftfarbe anpassen
-            Color textColor = started ? Color.Gray : SystemColors.ControlText;
-            using (Brush b = new SolidBrush(textColor))
-            {
-                e.Graphics.DrawString(klasse, e.Font, b, e.Bounds);
-            }
-
-            // Wenn Checkbox aktiv ist → selbst zeichnen
-            if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
-                e.DrawFocusRectangle();
-        }
-
 
         private void startRaceBtn_Click(object sender, EventArgs e)
         {
@@ -506,7 +517,8 @@ namespace Rundenzeiten
 
             if (IsCrossImBadSelected())
             {
-                if (!classStartTimes.TryGetValue(person.Klasse, out DateTime classStart))
+                var key = Norm(person.Klasse);
+                if (!classStartTimes.TryGetValue(key, out DateTime classStart))
                 {
                     roundResultLabel.Text = $"Klasse \"{person.Klasse}\" noch nicht gestartet!";
                     roundResultLabel.ForeColor = Color.Red;
@@ -514,6 +526,7 @@ namespace Rundenzeiten
                 }
                 lapTime = DateTime.Now - classStart - TimeSpan.FromSeconds(toAdd);
             }
+
             else
             {
                 lapTime = DateTime.Now - start - TimeSpan.FromSeconds(toAdd);
