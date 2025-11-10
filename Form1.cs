@@ -624,82 +624,165 @@ namespace Rundenzeiten
                 })
             );
         }
-
+        //Excel-Ausgabe:
         private void SaveToExcelPerClass(List<CSVRecord> records, string filePath)
         {
-            // Zieldatei
+            // ===== Lokale Helper: Zeilenfärbung nach Regeln (ganze Zeile) =====
+            // Regeln in dieser Reihenfolge anlegen (höchste Priorität zuerst):
+            // 1) weiblich (eigene Farbe)
+            // 2) Ü50 (grau)
+            // 3) Ü40 (blau)
+            // colAkHobby: Spalte mit "AK (Hobby)" (Ü40/Ü50/leer)
+            // colGeschlecht: Spalte mit Geschlecht (m/w/…)
+            void AddRowShading(ExcelWorksheet ws, int dataStartRow, int dataEndRow, int colAkHobby, int colGeschlecht, int lastCol)
+            {
+                if (ws == null || dataEndRow < dataStartRow) return;
+
+                var fullRowAddr = new ExcelAddress(dataStartRow, 1, dataEndRow, lastCol);
+
+                // Prüfzellen (erste Datenzeile als Anker)
+                string cellAK = $"${GetColumnLetter(colAkHobby)}{dataStartRow}";
+                string cellG = $"${GetColumnLetter(colGeschlecht)}{dataStartRow}";
+
+                // 1) Frauen (höchste Priorität)
+                var cfFemale = ws.ConditionalFormatting.AddExpression(fullRowAddr);
+                cfFemale.Formula = $"LOWER(LEFT({cellG},1))=\"w\"";
+                cfFemale.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cfFemale.Style.Fill.BackgroundColor.Color = Color.FromArgb(255, 229, 236); // Rosa
+                cfFemale.Priority = 1;
+
+                // 2) Ü50 (zweite Priorität)
+                var cfU50 = ws.ConditionalFormatting.AddExpression(fullRowAddr);
+                cfU50.Formula = $"{cellAK}=\"Ü50\"";
+                cfU50.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                //cfU50.Style.Fill.BackgroundColor.Color = Color.FromArgb(242, 242, 242); // Hellgrau
+                cfU50.Style.Fill.BackgroundColor.Color = Color.FromArgb(200, 200, 200); // dunkleres Grau
+                cfU50.Priority = 2;
+
+                // 3) Ü40 (dritte Priorität)
+                var cfU40 = ws.ConditionalFormatting.AddExpression(fullRowAddr);
+                cfU40.Formula = $"{cellAK}=\"Ü40\"";
+                cfU40.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cfU40.Style.Fill.BackgroundColor.Color = Color.FromArgb(221, 235, 247); // Hellblau
+                cfU40.Priority = 3;
+
+                // ✅ 4) ALLES andere → rein weiß halten
+                var cfRest = ws.ConditionalFormatting.AddExpression(fullRowAddr);
+                cfRest.Formula = $"AND({cellAK}<>\"Ü40\", {cellAK}<>\"Ü50\", LOWER(LEFT({cellG},1))<>\"w\")";
+                cfRest.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cfRest.Style.Fill.BackgroundColor.Color = Color.White;
+                cfRest.Priority = 10;
+            }
+
+
+            // Hilfsfunktion: Spaltenindex -> Excel-Buchstabe (1->A, 2->B, ...)
+            string GetColumnLetter(int col)
+            {
+                var result = "";
+                while (col > 0)
+                {
+                    int mod = (col - 1) % 26;
+                    result = (char)('A' + mod) + result;
+                    col = (col - 1) / 26;
+                }
+                return result;
+            }
+
+            // ===== Zieldatei =====
             string excelPath = Path.Combine(
                 Path.GetDirectoryName(filePath)!,
                 Path.GetFileNameWithoutExtension(filePath) + "_Druck.xlsx"
             );
-
-            // Zielordner sicher anlegen
             Directory.CreateDirectory(Path.GetDirectoryName(excelPath)!);
 
-            // Veranstaltung & Rennnummer für die Überschrift
+            // Veranstaltung & Rennnummer
             string veranstaltung = raceNameComboBox?.SelectedItem?.ToString() ?? "CrossImBad";
             string rennen = "?";
             var m = Regex.Match(Path.GetFileNameWithoutExtension(filePath), @"Rennen(\d+)");
             if (m.Success) rennen = m.Groups[1].Value;
 
-            string[] header = { "Platz", "PlatzAK", "Startnummer", "Name", "Vorname", "Geschlecht", "Verein", "Klasse", "Zeit", "Rundenzeiten" };
-            string logoPath = FindLogoPath();
+            // Header (11 Spalten – „PlatzAK (Hobby)“ entfernt, „AK (Hobby)“ bleibt)
+            string[] header = {
+        "Platz",
+        "PlatzAK",        // bei Hobby: Ü40/Ü50-Platz; <40: leer; sonst: Standard (m/w)
+        "AK (Hobby)",     // Ü40/Ü50 oder leer
+        "Startnummer",
+        "Name",
+        "Vorname",
+        "Geschlecht",
+        "Verein",
+        "Klasse",
+        "Zeit",
+        "Rundenzeiten"
+    };
 
-            // Master-Spaltenbreiten der Gesamtliste, werden später befüllt und auf Klassenblätter angewandt
+            // Spaltenpositionen merken (für CF-Formeln)
+            int COL_PlatzAK = 2;
+            int COL_AkHobby = 3;
+            int COL_Geschlecht = 7;
+            int LAST_COL = header.Length;
+
+            string logoPath = FindLogoPath();
             double[] masterWidths = null;
 
             using (var package = new ExcelPackage())
             {
-                // ===== Blatt: Gesamt =====================================================================
+                // ===== Blatt: Gesamt =====
                 var wsAll = package.Workbook.Worksheets.Add("Gesamt");
 
-                // Kopfbereich (Logo/Titel) – so kollidiert nichts
-                wsAll.Row(1).Height = 36;  // Logo-Zeile
-                wsAll.Row(2).Height = 28;  // Titel-Zeile
+                wsAll.Row(1).Height = 36;  // Logo
+                wsAll.Row(2).Height = 28;  // Titel
                 wsAll.Row(3).Height = 6;   // Leer
                 wsAll.Row(4).Height = 6;   // Leer
 
-                // Titel mittig
-                wsAll.Cells["A2:J2"].Merge = true;
-                wsAll.Cells["A2"].Value = $"{veranstaltung} – Ergebnisliste (Rennen {rennen})";
-                wsAll.Cells["A2"].Style.Font.Bold = true;
-                wsAll.Cells["A2"].Style.Font.Size = 20;
-                wsAll.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                wsAll.Cells[2, 1, 2, header.Length].Merge = true;
+                wsAll.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste (Rennen {rennen})";
+                wsAll.Cells[2, 1].Style.Font.Bold = true;
+                wsAll.Cells[2, 1].Style.Font.Size = 20;
+                wsAll.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                // Logo links oben (klein)
                 InsertLogo(wsAll, logoPath, "Gesamt");
 
-                // Kopfzeile ab Zeile 5
                 int headerRowAll = 5;
                 for (int c = 0; c < header.Length; c++)
                 {
                     var cell = wsAll.Cells[headerRowAll, c + 1];
                     cell.Value = header[c];
                     cell.Style.Font.Bold = true;
-                    cell.Style.Font.Color.SetColor(Color.Black);  // Schrift schwarz
+                    cell.Style.Font.Color.SetColor(Color.Black);
                     cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                     cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                 }
 
-                // Daten ab Zeile 6
                 int rowAll = headerRowAll + 1;
                 foreach (var r in records)
                 {
+                    bool isHobby = r.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    // PlatzAK: Standard (m/w), außer CrossImBad+Hobby:
+                    //   Ü40/Ü50 -> PlatzAK gesetzt
+                    //   <40     -> leer
+                    object platzAkCell = (!IsCrossImBadSelected() || !isHobby)
+                        ? (r?.PlatzAK > 0 ? r.PlatzAK : (int?)null)
+                        : (!string.IsNullOrEmpty(r?.AltersgruppeHobby)
+                            ? (r.PlatzAK > 0 ? r.PlatzAK : (int?)null)
+                            : (int?)null);
+
                     wsAll.Cells[rowAll, 1].Value = r?.Platz;
-                    wsAll.Cells[rowAll, 2].Value = r?.PlatzAK;
-                    wsAll.Cells[rowAll, 3].Value = r?.Startnummer;
-                    wsAll.Cells[rowAll, 4].Value = r?.Name ?? "";
-                    wsAll.Cells[rowAll, 5].Value = r?.Vorname ?? "";
-                    wsAll.Cells[rowAll, 6].Value = r?.Geschlecht ?? "";
-                    wsAll.Cells[rowAll, 7].Value = r?.Verein ?? "";
-                    wsAll.Cells[rowAll, 8].Value = r?.Klasse ?? "";
-                    wsAll.Cells[rowAll, 9].Value = ToHhMmSs(r?.Zeit);
-                    wsAll.Cells[rowAll, 10].Value = FormatLapList(r?.Rundenzeiten);
+                    wsAll.Cells[rowAll, 2].Value = platzAkCell;
+                    wsAll.Cells[rowAll, 3].Value = r?.AltersgruppeHobby ?? "";
+                    wsAll.Cells[rowAll, 4].Value = r?.Startnummer;
+                    wsAll.Cells[rowAll, 5].Value = r?.Name ?? "";
+                    wsAll.Cells[rowAll, 6].Value = r?.Vorname ?? "";
+                    wsAll.Cells[rowAll, 7].Value = r?.Geschlecht ?? "";
+                    wsAll.Cells[rowAll, 8].Value = r?.Verein ?? "";
+                    wsAll.Cells[rowAll, 9].Value = r?.Klasse ?? "";
+                    wsAll.Cells[rowAll, 10].Value = ToHhMmSs(r?.Zeit);
+                    wsAll.Cells[rowAll, 11].Value = FormatLapList(r?.Rundenzeiten);
                     rowAll++;
                 }
 
-                // Als Excel-Tabelle formatieren
                 if (rowAll > headerRowAll + 1)
                 {
                     var rangeAll = wsAll.Cells[headerRowAll, 1, rowAll - 1, header.Length];
@@ -707,33 +790,32 @@ namespace Rundenzeiten
                     tblAll.TableStyle = TableStyles.Medium2;
                 }
 
-                wsAll.View.FreezePanes(headerRowAll + 1, 1); // Kopf fixieren
+                wsAll.View.FreezePanes(headerRowAll + 1, 1);
 
-                // DRUCK-geeignete Breiten + Masterbreiten erfassen
                 if (wsAll.Dimension != null)
                 {
-                    // Grund-AutoFit mit Grenzen
                     wsAll.Cells[wsAll.Dimension.Address].AutoFitColumns(8, 28);
 
-                    // Exakte Wunschbreiten
                     wsAll.Column(1).Width = 8;   // Platz
-                    wsAll.Column(2).Width = 10;   // PlatzAK
-                    wsAll.Column(3).Width = 14;  // Startnummer
-                    wsAll.Column(4).Width = 16;  // Name
-                    wsAll.Column(5).Width = 14;  // Vorname
-                    wsAll.Column(6).Width = 10;  // Geschlecht
-                    wsAll.Column(7).Width = 30;  // Verein
-                    wsAll.Column(8).Width = 8;  // Klasse
-                    wsAll.Column(9).Width = 10;  // Zeit
-                    wsAll.Column(10).Width = 32;  // Rundenzeiten
+                    wsAll.Column(2).Width = 10;  // PlatzAK
+                    wsAll.Column(3).Width = 10;  // AK (Hobby)
+                    wsAll.Column(4).Width = 14;  // Startnummer
+                    wsAll.Column(5).Width = 16;  // Name
+                    wsAll.Column(6).Width = 14;  // Vorname
+                    wsAll.Column(7).Width = 10;  // Geschlecht
+                    wsAll.Column(8).Width = 30;  // Verein
+                    wsAll.Column(9).Width = 12;  // Klasse
+                    wsAll.Column(10).Width = 10;  // Zeit
+                    wsAll.Column(11).Width = 34;  // Rundenzeiten
 
-                    // Lange Texte umbrechen
-                    wsAll.Cells[headerRowAll + 1, 7, rowAll - 1, 7].Style.WrapText = true;  // Verein
-                    wsAll.Cells[headerRowAll + 1, 10, rowAll - 1, 10].Style.WrapText = true;  // Rundenzeiten
+                    if (rowAll > headerRowAll + 1)
+                    {
+                        wsAll.Cells[headerRowAll + 1, 8, rowAll - 1, 8].Style.WrapText = true; // Verein
+                        wsAll.Cells[headerRowAll + 1, 11, rowAll - 1, 11].Style.WrapText = true; // Rundenzeiten
+                    }
 
                     wsAll.Row(headerRowAll).Height = 20;
 
-                    // <- Masterbreiten sichern, damit alle Klassenblätter identisch sind
                     masterWidths = new double[header.Length];
                     for (int c = 1; c <= header.Length; c++)
                         masterWidths[c - 1] = wsAll.Column(c).Width;
@@ -744,11 +826,18 @@ namespace Rundenzeiten
                 wsAll.PrinterSettings.FitToWidth = 1;
                 wsAll.PrinterSettings.FitToHeight = 0;
 
-                // ====================== Pro Klasse ein eigenes Blatt =====================================
+                // ===== Pro Klasse Blatt =====
                 var groups = records.GroupBy(r => r?.Klasse ?? "Unbekannt")
                                     .OrderBy(g => g.Key);
 
-                int linkRow = 2; // Links auf "Gesamt" (Spalte L)
+                int linkRow = 2;
+                int linkCol = header.Length; // letzte Spalte im "Gesamt"-Titelblock
+
+                // Zeilenfärbung im "Gesamt" Blatt hinzufügen (Datenbereich)
+                int dataStartAll = headerRowAll + 1;
+                int dataEndAll = rowAll - 1;
+                AddRowShading(wsAll, dataStartAll, dataEndAll, COL_AkHobby, COL_Geschlecht, LAST_COL);
+
                 foreach (var g in groups)
                 {
                     string rawName = g.Key;
@@ -760,53 +849,57 @@ namespace Rundenzeiten
 
                     var ws = package.Workbook.Worksheets.Add(uniqueName);
 
-                    // Kopfbereich wie oben
                     ws.Row(1).Height = 36;
                     ws.Row(2).Height = 28;
                     ws.Row(3).Height = 6;
                     ws.Row(4).Height = 6;
 
-                    ws.Cells["A2:J2"].Merge = true;
-                    ws.Cells["A2"].Value = $"{veranstaltung} – Ergebnisliste – {rawName} (Rennen {rennen})";
-                    ws.Cells["A2"].Style.Font.Bold = true;
-                    ws.Cells["A2"].Style.Font.Size = 20;
-                    ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    ws.Cells[2, 1, 2, header.Length].Merge = true;
+                    ws.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste – {rawName} (Rennen {rennen})";
+                    ws.Cells[2, 1].Style.Font.Bold = true;
+                    ws.Cells[2, 1].Style.Font.Size = 20;
+                    ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                    // Logo pro Klassenblatt
                     InsertLogo(ws, logoPath, uniqueName);
 
-                    // Kopfzeile ab Zeile 5
                     int headerRow = 5;
                     for (int c = 0; c < header.Length; c++)
                     {
                         var cell = ws.Cells[headerRow, c + 1];
                         cell.Value = header[c];
                         cell.Style.Font.Bold = true;
-                        cell.Style.Font.Color.SetColor(Color.Black);  // Schrift schwarz
+                        cell.Style.Font.Color.SetColor(Color.Black);
                         cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
                         cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
                         cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                     }
 
-                    // Daten der Klasse (ab Zeile 6)
                     var data = g.OrderBy(r => r?.Platz ?? int.MaxValue).ToList();
                     int row = headerRow + 1;
                     foreach (var r in data)
                     {
+                        bool isHobby = r.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        object platzAkCell = (!IsCrossImBadSelected() || !isHobby)
+                            ? (r?.PlatzAK > 0 ? r.PlatzAK : (int?)null)
+                            : (!string.IsNullOrEmpty(r?.AltersgruppeHobby)
+                                ? (r.PlatzAK > 0 ? r.PlatzAK : (int?)null)
+                                : (int?)null);
+
                         ws.Cells[row, 1].Value = r?.Platz;
-                        ws.Cells[row, 2].Value = r?.PlatzAK;
-                        ws.Cells[row, 3].Value = r?.Startnummer;
-                        ws.Cells[row, 4].Value = r?.Name ?? "";
-                        ws.Cells[row, 5].Value = r?.Vorname ?? "";
-                        ws.Cells[row, 6].Value = r?.Geschlecht ?? "";
-                        ws.Cells[row, 7].Value = r?.Verein ?? "";
-                        ws.Cells[row, 8].Value = r?.Klasse ?? "";
-                        ws.Cells[row, 9].Value = ToHhMmSs(r?.Zeit);
-                        ws.Cells[row, 10].Value = FormatLapList(r?.Rundenzeiten);
+                        ws.Cells[row, 2].Value = platzAkCell;
+                        ws.Cells[row, 3].Value = r?.AltersgruppeHobby ?? "";
+                        ws.Cells[row, 4].Value = r?.Startnummer;
+                        ws.Cells[row, 5].Value = r?.Name ?? "";
+                        ws.Cells[row, 6].Value = r?.Vorname ?? "";
+                        ws.Cells[row, 7].Value = r?.Geschlecht ?? "";
+                        ws.Cells[row, 8].Value = r?.Verein ?? "";
+                        ws.Cells[row, 9].Value = r?.Klasse ?? "";
+                        ws.Cells[row, 10].Value = ToHhMmSs(r?.Zeit);
+                        ws.Cells[row, 11].Value = FormatLapList(r?.Rundenzeiten);
                         row++;
                     }
 
-                    // Tabelle anwenden
                     if (row > headerRow + 1)
                     {
                         var range = ws.Cells[headerRow, 1, row - 1, header.Length];
@@ -815,10 +908,8 @@ namespace Rundenzeiten
                         tbl.TableStyle = TableStyles.Medium2;
                     }
 
-                    // Breiten identisch zur Gesamtliste übernehmen
                     if (ws.Dimension != null)
                     {
-                        // optionales AutoFit zuerst
                         ws.Cells[ws.Dimension.Address].AutoFitColumns(8, 28);
 
                         if (masterWidths != null)
@@ -827,9 +918,11 @@ namespace Rundenzeiten
                                 ws.Column(c).Width = masterWidths[c - 1];
                         }
 
-                        // gleiche Text-Optionen für Verein & Rundenzeiten
-                        ws.Cells[headerRow + 1, 7, row - 1, 7].Style.WrapText = true;
-                        ws.Cells[headerRow + 1, 10, row - 1, 10].Style.WrapText = true;
+                        if (row > headerRow + 1)
+                        {
+                            ws.Cells[headerRow + 1, 8, row - 1, 8].Style.WrapText = true; // Verein
+                            ws.Cells[headerRow + 1, 11, row - 1, 11].Style.WrapText = true; // Rundenzeiten
+                        }
 
                         ws.Row(headerRow).Height = 20;
                     }
@@ -840,14 +933,54 @@ namespace Rundenzeiten
                     ws.PrinterSettings.FitToWidth = 1;
                     ws.PrinterSettings.FitToHeight = 0;
 
-                    // Link von "Gesamt" auf das Klassenblatt (Spalte L)
-                    wsAll.Cells[linkRow, 12].Hyperlink = new ExcelHyperLink($"'{uniqueName}'!A1", rawName);
-                    wsAll.Cells[linkRow, 12].Value = rawName;
+                    // Zeilenfärbung auch auf Klassenblatt
+                    int dataStart = headerRow + 1;
+                    int dataEnd = row - 1;
+                    AddRowShading(ws, dataStart, dataEnd, COL_AkHobby, COL_Geschlecht, LAST_COL);
+
+                    // Link von "Gesamt" auf Klassenblatt – letzte Spalte in "Gesamt"
+                    wsAll.Cells[linkRow, header.Length].Hyperlink = new ExcelHyperLink($"'{uniqueName}'!A1", rawName);
+                    wsAll.Cells[linkRow, header.Length].Value = rawName;
                     linkRow++;
                 }
 
                 package.SaveAs(new FileInfo(excelPath));
             }
+        }
+
+
+
+        //Alter
+        private bool TryParseGeburtsdatum(string s, out DateTime geb)
+        {
+            geb = DateTime.MinValue;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+
+            if (DateTime.TryParseExact(s.Trim(),
+                new[] { "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd", "dd.MM.yy", "d.M.yy" },
+                System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+                System.Globalization.DateTimeStyles.None, out var dt))
+            { geb = dt; return true; }
+
+            return DateTime.TryParse(s, System.Globalization.CultureInfo.GetCultureInfo("de-DE"),
+                                     System.Globalization.DateTimeStyles.None, out geb);
+        }
+
+        private int? GetAgeOnEvent(string geburtsdatum)
+        {
+            if (!TryParseGeburtsdatum(geburtsdatum, out var geb)) return null;
+            var eventDate = (raceStart != DateTime.MinValue ? raceStart.Date : DateTime.Today);
+            int age = eventDate.Year - geb.Year;
+            if (eventDate < geb.AddYears(age)) age--;
+            return Math.Max(age, 0);
+        }
+
+        private string GetHobbyBucket(int? age)
+        {
+            if (age == null) return "";
+            if (age >= 50) return "Ü50";
+            if (age >= 40) return "Ü40";
+            return "";
         }
 
         private void DisplayInGrid(List<CSVRecord> records)
@@ -938,36 +1071,70 @@ namespace Rundenzeiten
             File.WriteAllLines(filePath, lines, new UTF8Encoding(true)); // UTF-8 mit BOM
         }
 
-
         private void RankRecords(List<CSVRecord> records)
         {
-            // Geschlecht zu Rang 0/1 m/w (null-sicher)
             int GenderKey(string g)
             {
                 if (string.IsNullOrWhiteSpace(g)) return 2;
                 g = g.Trim().ToLowerInvariant();
-                if (g.StartsWith("m")) return 0; // männlich/m
-                if (g.StartsWith("w")) return 1; // weiblich/w
+                if (g.StartsWith("m")) return 0;
+                if (g.StartsWith("w")) return 1;
                 return 2;
             }
 
+            // 1) Gesamt-Reihenfolge (unverändert)
             var ranked = records
-                .OrderBy(r => ExtractAgeClass(r.Klasse))               // Klasse (U11, U13, …)
-                .ThenBy(r => GenderKey(r.Geschlecht))                  // m vor w
-                .ThenByDescending(r => r.Rundenzeiten?.Count ?? 0)     // mehr Runden zuerst
-                .ThenBy(r => r.Zeit.TotalSeconds)                      // schnellere Zeit zuerst
+                .OrderBy(r => ExtractAgeClass(r.Klasse))
+                .ThenBy(r => GenderKey(r.Geschlecht))
+                .ThenByDescending(r => r.Rundenzeiten?.Count ?? 0)
+                .ThenBy(r => r.Zeit.TotalSeconds)
                 .ToList();
 
-            // Platz (gesamt)
+            // 2) Gesamt-Platz
             for (int i = 0; i < ranked.Count; i++)
                 ranked[i].Platz = i + 1;
 
-            // PlatzAK je Klasse UND Geschlecht
+            // 3) Standard-„PlatzAK“: je Klasse + Geschlecht (wie gehabt)
             foreach (var group in ranked.GroupBy(r => new { r.Klasse, Key = GenderKey(r.Geschlecht) }))
             {
                 int akPlatz = 1;
                 foreach (var r in group.OrderBy(x => x.Platz))
                     r.PlatzAK = akPlatz++;
+            }
+
+            // 4) HOBBY-Sonderregel: CrossImBad + Klasse enthält "Hobby"
+            if (IsCrossImBadSelected())
+            {
+                // Bucket setzen
+                foreach (var r in ranked.Where(x => x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    var age = GetAgeOnEvent(r.Geburtsdatum);
+                    r.AltersgruppeHobby = GetHobbyBucket(age); // "", "Ü40", "Ü50"
+                }
+
+                // Ü40/Ü50: neuen (geschlechtsunabhängigen) Platz in PlatzAK schreiben
+                var hobbyBuckets = ranked.Where(x =>
+                    x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    !string.IsNullOrEmpty(x.AltersgruppeHobby));
+
+                foreach (var grp in hobbyBuckets.GroupBy(x => x.AltersgruppeHobby))
+                {
+                    int place = 1;
+                    foreach (var r in grp
+                        .OrderByDescending(x => x.Rundenzeiten?.Count ?? 0)
+                        .ThenBy(x => x.Zeit.TotalSeconds))
+                    {
+                        r.PlatzAK = place++; // <-- überschreibt PlatzAK für Ü40/Ü50
+                    }
+                }
+
+                // Unter 40: „PlatzAK“ leer machen (in Excel später als NULL ausgeben)
+                foreach (var r in ranked.Where(x =>
+                    x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    string.IsNullOrEmpty(x.AltersgruppeHobby)))
+                {
+                    r.PlatzAK = 0; // wir schreiben später NULL ins Excel, wenn 0 + Hobby + kein Bucket
+                }
             }
 
             records.Clear();

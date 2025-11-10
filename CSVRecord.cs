@@ -18,5 +18,8 @@ namespace Rundenzeiten
         public string Klasse { get; set; }
         public TimeSpan Zeit { get; set; }
         public List<double> Rundenzeiten { get; set; }
+        //public int PlatzAKHobby { get; set; }          // 2. AK-Platz für Hobby (geschlechtsunabhängig)
+        public string AltersgruppeHobby { get; set; }  // "Normal", "Ü40", "Ü50"
+
     }
 }
