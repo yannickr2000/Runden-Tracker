@@ -228,7 +228,7 @@ namespace Rundenzeiten
 
                     var fields = line.Split(';');
 
-                    if (fields.Length >= 8)
+                    if (fields.Length >= 9)
                     {
                         if (result.Any(x => x.Startnummer == fields[0]))
                             return null;
