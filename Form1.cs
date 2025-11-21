@@ -312,8 +312,8 @@ namespace Rundenzeiten
                     if (!string.IsNullOrEmpty(extraCols))
                         extraCols = ";" + extraCols;
                 }
-                // Rundenzeiten wieder im Format [1.1, 2.2, ...]
-                string rundenzeitenStr = $"[{string.Join(", ", record.Rundenzeiten)}]";
+                // Rundenzeiten als [4.5, 5.0, ...] mit Punkt als Dezimaltrennzeichen
+                var rundenzeitenStr = "[" + string.Join(", ", record.Rundenzeiten.Select(rt => rt.ToString(System.Globalization.CultureInfo.InvariantCulture))) + "]";
                 string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit.ToString(@"hh\:mm\:ss")} ({record.Rundenzeiten.Count} Runden);{rundenzeitenStr}{extraCols}";
                 lines.Add(line);
             }
