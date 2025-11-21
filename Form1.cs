@@ -88,41 +88,80 @@ namespace Rundenzeiten
         private List<PersonEntry> ReadCsvFile(string path)
         {
             List<PersonEntry> result = new List<PersonEntry>();
+            string errorMsg = null;
 
             using (var reader = new StreamReader(path))
             {
+                string[] headers = null;
                 bool isFirstLine = true;
+                int lineNumber = 0;
+                char delimiter = ';';
 
                 while (!reader.EndOfStream)
                 {
                     var line = reader.ReadLine();
+                    lineNumber++;
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue; // Leere Zeilen ignorieren
 
                     if (isFirstLine)
                     {
-                        isFirstLine = false; // skip header
+                        // Erkenne Trennzeichen automatisch
+                        if (line.Contains(",") && !line.Contains(";"))
+                            delimiter = ',';
+                        headers = line.Split(delimiter);
+                        isFirstLine = false;
                         continue;
                     }
 
-                    var fields = line.Split(';');
+                    var fields = line.Split(delimiter);
+                    if (fields.Length < 8)
+                        continue; // Zu kurze Zeilen ignorieren
 
-                    if (fields.Length >= 8)
+                    if (string.IsNullOrWhiteSpace(fields[0]))
+                        continue; // Zeilen ohne Startnummer ignorieren
+
+                    if (result.Any(x => x.Startnummer == fields[0]))
                     {
-                        if (result.Any(x => x.Startnummer == fields[0]))
-                            return null;
-
-                        result.Add(new PersonEntry
-                        {
-                            Startnummer = fields[0],
-                            Name = fields[1],
-                            Vorname = fields[2],
-                            Geschlecht = fields[3],
-                            Verein = fields[4],
-                            Geburtsdatum = fields[5],
-                            Strecke = fields[6],
-                            Klasse = fields[7]
-                        });
+                        errorMsg = $"Fehler: Doppelte Startnummer '{fields[0]}' in Zeile {lineNumber}";
+                        break;
                     }
+
+                    var entry = new PersonEntry
+                    {
+                        Startnummer = fields[0],
+                        Name = fields[1],
+                        Vorname = fields[2],
+                        Geschlecht = fields[3],
+                        Verein = fields[4],
+                        Geburtsdatum = fields[5],
+                        Strecke = fields[6],
+                        Klasse = fields[7]
+                    };
+
+                    // Zusätzliche Spalten speichern
+                    if (headers != null && fields.Length > 8)
+                    {
+                        for (int i = 8; i < fields.Length && i < headers.Length; i++)
+                        {
+                            entry.ExtraColumns[headers[i]] = fields[i];
+                        }
+                    }
+
+                    result.Add(entry);
                 }
+            }
+
+            if (!string.IsNullOrEmpty(errorMsg))
+            {
+                MessageBox.Show(errorMsg, "CSV-Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (result.Count == 0)
+            {
+                MessageBox.Show("Keine gültigen Einträge in der Startliste gefunden!\nBitte prüfe das CSV-Format und die Spalten.", "CSV-Fehler", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return null;
             }
 
             return result;
@@ -211,10 +250,14 @@ namespace Rundenzeiten
 
         private void saveCSV()
         {
-            const string Header = "Platz;PlatzAK;Startnummer;Name;Vorname;Geschlecht;Geburtsdatum;Verein;Strecke;Klasse;Zeit;Rundenzeiten";
+            // Dynamische Header generieren
+            var extraHeaders = entries.SelectMany(e => e.ExtraColumns.Keys).Distinct().ToList();
+            string Header = "Platz;PlatzAK;Startnummer;Name;Vorname;Geschlecht;Geburtsdatum;Verein;Strecke;Klasse;Zeit;Rundenzeiten";
+            if (extraHeaders.Count > 0)
+                Header += ";" + string.Join(";", extraHeaders);
             List<CSVRecord> records = BuildRecords();
             RankRecords(records);
-            SaveToCsvFile(records, Header, resultFilePath);
+            SaveToCsvFile(records, Header, resultFilePath, extraHeaders);
             DisplayInGrid(records);
         }
 
@@ -254,17 +297,33 @@ namespace Rundenzeiten
             resultGrid.DataSource = table;
         }
 
-        private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
+        private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath, List<string> extraHeaders)
         {
             var lines = new List<string> { header };
-
             foreach (var record in records)
             {
-                string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit.ToString(@"hh\:mm\:ss")} ({record.Rundenzeiten.Count} Runden);[{string.Join(", ", record.Rundenzeiten)}]";
+                // Suche zugehörigen PersonEntry für ExtraColumns
+                var person = entries.FirstOrDefault(e => e.Startnummer == record.Startnummer);
+                string extraCols = "";
+                if (extraHeaders != null && person != null)
+                {
+                    var values = extraHeaders.Select(h => person.ExtraColumns.ContainsKey(h) ? person.ExtraColumns[h] : "");
+                    extraCols = string.Join(";", values);
+                    if (!string.IsNullOrEmpty(extraCols))
+                        extraCols = ";" + extraCols;
+                }
+                // Rundenzeiten wieder im Format [1.1, 2.2, ...]
+                string rundenzeitenStr = $"[{string.Join(", ", record.Rundenzeiten)}]";
+                string line = $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};{record.Zeit.ToString(@"hh\:mm\:ss")} ({record.Rundenzeiten.Count} Runden);{rundenzeitenStr}{extraCols}";
                 lines.Add(line);
             }
-
             File.WriteAllLines(filePath, lines);
+        }
+
+        // Überladene Methode für Kompatibilität
+        private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
+        {
+            SaveToCsvFile(records, header, filePath, null);
         }
 
         private void RankRecords(List<CSVRecord> records)
