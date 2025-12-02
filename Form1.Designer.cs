@@ -1,4 +1,7 @@
-﻿namespace Rundenzeiten
+﻿using System.Drawing;
+using System.Windows.Forms;
+
+namespace Rundenzeiten
 {
     partial class Form1
     {
@@ -366,28 +369,28 @@
             panel4.ResumeLayout(false);
             panel4.PerformLayout();
             ResumeLayout(false);
-
         }
 
         #endregion
-        private System.Windows.Forms.NumericUpDown raceDuration;
-        private System.Windows.Forms.Button confirmDurationBtn;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Button starterListBtn;
-        private System.Windows.Forms.Label starterListLabel;
-        private System.Windows.Forms.Button startRaceBtn;
-        private System.Windows.Forms.Label remainingTime;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Button enterRoundBtn;
-        private System.Windows.Forms.Label roundResultLabel;
-        private System.Windows.Forms.DataGridView resultGrid;
-        private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Panel panel2;
-        private System.Windows.Forms.Panel panel4;
+
+        private NumericUpDown raceDuration;
+        private Button confirmDurationBtn;
+        private Label label1;
+        private Label label2;
+        private Button starterListBtn;
+        private Label starterListLabel;
+        private Button startRaceBtn;
+        private Label remainingTime;
+        private Label label3;
+        private Button enterRoundBtn;
+        private Label roundResultLabel;
+        private DataGridView resultGrid;
+        private PictureBox pictureBox1;
+        private Panel panel1;
+        private Label label4;
+        private Label label5;
+        private Panel panel2;
+        private Panel panel4;
         private TextBox startNumberInput;
         private ComboBox raceNameComboBox;
         private Label label6;
@@ -396,4 +399,3 @@
         private Label classStatusLabel;
     }
 }
-
