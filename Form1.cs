@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using OfficeOpenXml.Table;
-
 
 namespace Rundenzeiten
 {
@@ -23,17 +20,14 @@ namespace Rundenzeiten
         private DateTime end;
         private System.Windows.Forms.Timer countdownTimer;
 
-        private List<PersonEntry> entries = new List<PersonEntry>();
-        private List<RoundEntry> roundEntries = new List<RoundEntry>();
+        private readonly List<PersonEntry> entries = new();
+        private readonly List<RoundEntry> roundEntries = new();
         private string resultFilePath = string.Empty;
 
         // Wellenstarts
         private DateTime raceStart = DateTime.MinValue;
         private readonly Dictionary<string, DateTime> classStartTimes =
-            new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-
-        // Mehrfachstart (gleichzeitig, ohne Versatz) – aktuell nicht genutzt, aber belassen
-        private Button startSelectedClassesBtn;
+            new(StringComparer.OrdinalIgnoreCase);
 
         // Helfer
         private bool RaceRunning => startRaceBtn.Text == "Rennen beenden";
@@ -43,12 +37,11 @@ namespace Rundenzeiten
         {
             InitializeComponent();
 
+            // CheckedListBox für Klassenstarts konfigurieren
             classMultiList.DrawMode = DrawMode.OwnerDrawFixed;
             classMultiList.DrawItem += classMultiList_DrawItem;
             classMultiList.ItemCheck += classMultiList_ItemCheck;
             classMultiList.MouseDown += classMultiList_MouseDown;
-
-            startClassBtn.Click += startClassBtn_Click;
 
             // Veranstaltung ändern -> UI umschalten
             raceNameComboBox.SelectedIndexChanged += raceNameComboBox_SelectedIndexChanged;
@@ -63,10 +56,10 @@ namespace Rundenzeiten
             });
             raceNameComboBox.SelectedIndex = -1;
 
-            // Ereignisse verknüpfen
+            // bei Änderung der Auswahl UI aktualisieren
             classMultiList.SelectedIndexChanged += (s, e) => UpdateClassStartUIState();
-            //startSelectedClassesBtn.Click += startSelectedClassesBtn_Click;
 
+            // Countdown-Timer
             countdownTimer = new System.Windows.Forms.Timer
             {
                 Interval = 500
@@ -79,6 +72,9 @@ namespace Rundenzeiten
             enterRoundBtn.Enabled = false;
         }
 
+        // ===========================================================
+        //  TIMER / RENDAUER
+        // ===========================================================
         private void CountdownTimer_Tick(object sender, EventArgs e)
         {
             if (start == DateTime.MinValue) return;
@@ -100,6 +96,21 @@ namespace Rundenzeiten
             confirmDurationBtn.BackColor = Color.LightGreen;
         }
 
+        public static string FormatSecondsToMMSS(int totalSeconds)
+        {
+            bool isNegative = totalSeconds < 0;
+            totalSeconds = Math.Abs(totalSeconds);
+
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
+
+            string formatted = $"{minutes:D2}:{seconds:D2}";
+            return isNegative ? "-" + formatted : formatted;
+        }
+
+        // ===========================================================
+        //  STARTLISTE LADEN
+        // ===========================================================
         private void starterListBtn_Click(object sender, EventArgs e)
         {
             var ofd = new OpenFileDialog
@@ -114,7 +125,8 @@ namespace Rundenzeiten
             string filePath = ofd.FileName;
 
             // Starter einlesen
-            entries = ReadCsvFile(filePath);
+            entries.Clear();
+            entries.AddRange(ReadCsvFile(filePath));
 
             if (entries.Count < 1)
             {
@@ -161,7 +173,6 @@ namespace Rundenzeiten
                 classMultiList.Items.Clear();
                 classMultiList.Enabled = false;
             }
-            // ------------------------------------------------------------------------
 
             // CSV/Excel sofort einmal erzeugen & UI-Status aktualisieren
             saveCSV();
@@ -171,32 +182,6 @@ namespace Rundenzeiten
 
             UpdateClassStartUIState();
             UpdateClassStatusLabel();
-        }
-
-        private string ExtractRaceNumber(string fileName)
-        {
-            // akzeptiert "Rennen6", "Rennen_6", "rennen 6"
-            var m = Regex.Match(fileName, @"[Rr]ennen[_ ]*(\d+)");
-            if (m.Success) return m.Groups[1].Value;
-
-            // Fallback: Zahl am Ende des Namens
-            m = Regex.Match(fileName, @"(\d+)$");
-            if (m.Success) return m.Groups[1].Value;
-
-            return "1";
-        }
-
-        private string GetResultFilePath(string rennenNummer)
-        {
-            string date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-            string veranstaltung = raceNameComboBox.SelectedItem?.ToString() ?? "CrossImBad";
-
-            // Ordner ".\Ergebnisse" neben der EXE
-            string resultsDir = Path.Combine(Application.StartupPath, "Ergebnisse");
-            Directory.CreateDirectory(resultsDir);
-
-            string fileName = $"Ergebnisse_{veranstaltung}_Rennen{rennenNummer}_{date}.csv";
-            return Path.Combine(resultsDir, fileName);
         }
 
         private List<PersonEntry> ReadCsvFile(string path)
@@ -230,9 +215,7 @@ namespace Rundenzeiten
 
                     // Doppelte Startnummern nur überspringen
                     if (result.Any(x => x.Startnummer == fields[0]))
-                    {
                         continue;
-                    }
 
                     var entry = new PersonEntry
                     {
@@ -244,6 +227,7 @@ namespace Rundenzeiten
                         Geburtsdatum = fields[5],
                         Strecke = fields[6],
                         Klasse = fields[7],
+                        // UCI-Code ist optional
                         UciCode = (fields.Length >= 9) ? fields[8] : string.Empty
                     };
 
@@ -254,12 +238,43 @@ namespace Rundenzeiten
             return result;
         }
 
+        private string ExtractRaceNumber(string fileName)
+        {
+            // akzeptiert "Rennen6", "Rennen_6", "rennen 6"
+            var m = Regex.Match(fileName, @"[Rr]ennen[_ ]*(\d+)");
+            if (m.Success) return m.Groups[1].Value;
+
+            // Fallback: Zahl am Ende des Namens
+            m = Regex.Match(fileName, @"(\d+)$");
+            if (m.Success) return m.Groups[1].Value;
+
+            return "1";
+        }
+
+        private string GetResultFilePath(string rennenNummer)
+        {
+            string date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+            string veranstaltung = raceNameComboBox.SelectedItem?.ToString() ?? "CrossImBad";
+
+            // Ordner ".\Ergebnisse" neben der EXE
+            string resultsDir = Path.Combine(Application.StartupPath, "Ergebnisse");
+            Directory.CreateDirectory(resultsDir);
+
+            string fileName = $"Ergebnisse_{veranstaltung}_Rennen{rennenNummer}_{date}.csv";
+            return Path.Combine(resultsDir, fileName);
+        }
+
         private bool IsCrossImBadSelected()
         {
-            return string.Equals(raceNameComboBox.SelectedItem?.ToString(), "CrossImBad",
+            return string.Equals(
+                raceNameComboBox.SelectedItem?.ToString(),
+                "CrossImBad",
                 StringComparison.OrdinalIgnoreCase);
         }
 
+        // ===========================================================
+        //  KLASSENSTARTS
+        // ===========================================================
         private void startClassBtn_Click(object sender, EventArgs e)
         {
             if (!IsCrossImBadSelected()) return;
@@ -345,18 +360,6 @@ namespace Rundenzeiten
             e.DrawFocusRectangle();
         }
 
-        public static string FormatSecondsToMMSS(int totalSeconds)
-        {
-            bool isNegative = totalSeconds < 0;
-            totalSeconds = Math.Abs(totalSeconds);
-
-            int minutes = totalSeconds / 60;
-            int seconds = totalSeconds % 60;
-
-            string formatted = $"{minutes:D2}:{seconds:D2}";
-            return isNegative ? "-" + formatted : formatted;
-        }
-
         private void raceNameComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             UpdateClassStartUIState();
@@ -364,11 +367,10 @@ namespace Rundenzeiten
 
         private void UpdateClassStartUIState()
         {
-            bool canUseClasses = IsCrossImBadSelected() && entries != null && entries.Count > 0;
+            bool canUseClasses = IsCrossImBadSelected() && entries.Count > 0;
+
             if (classMultiList != null)
-            {
                 classMultiList.Enabled = canUseClasses;
-            }
 
             bool anyFreshChecked = false;
 
@@ -397,7 +399,7 @@ namespace Rundenzeiten
         {
             if (classStatusLabel == null) return;
 
-            bool ready = IsCrossImBadSelected() && entries != null && entries.Count > 0
+            bool ready = IsCrossImBadSelected() && entries.Count > 0
                          && classMultiList != null && classMultiList.Items.Count > 0;
 
             if (!ready)
@@ -447,6 +449,9 @@ namespace Rundenzeiten
             classStatusLabel.Text = sb.ToString().TrimEnd();
         }
 
+        // ===========================================================
+        //  RENNSTART / RUNDEN ERFASSEN
+        // ===========================================================
         private void startRaceBtn_Click(object sender, EventArgs e)
         {
             if (raceNameComboBox.SelectedIndex == -1)
@@ -468,16 +473,7 @@ namespace Rundenzeiten
             raceStart = start;
             end = start.AddMinutes(Convert.ToInt32(raceDuration.Value));
 
-            if (IsCrossImBadSelected())
-            {
-                // Aktivierung über UpdateClassStartUIState, sobald Klassen angehakt
-                startClassBtn.Enabled = false;
-            }
-            else
-            {
-                startClassBtn.Enabled = false;
-                classStartTimes.Clear();
-            }
+            classStartTimes.Clear();
 
             startRaceBtn.BackColor = Color.Red;
             startRaceBtn.Text = "Rennen beenden";
@@ -500,15 +496,35 @@ namespace Rundenzeiten
             {
                 startNumber = Convert.ToInt32(startNumberInput.Text);
             }
-            catch { }
+            catch
+            {
+                // ignorieren
+            }
 
             enterRound(startNumber);
+        }
+
+        private void startNumberInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyData == Keys.Enter)
+            {
+                int startNumber = 0;
+
+                try
+                {
+                    startNumber = Convert.ToInt32(startNumberInput.Text);
+                }
+                catch { }
+
+                enterRound(startNumber);
+            }
         }
 
         private void enterRound(int startnumber)
         {
             startNumberInput.Text = "";
 
+            // negative Startnummer: letzten Eintrag löschen
             if (startnumber < 0 && roundEntries.Count > 0)
             {
                 roundResultLabel.Text = "Letzten Eintrag gelöscht";
@@ -518,7 +534,7 @@ namespace Rundenzeiten
                 return;
             }
 
-            PersonEntry person = entries.FirstOrDefault(x => x.Startnummer == startnumber.ToString());
+            var person = entries.FirstOrDefault(x => x.Startnummer == startnumber.ToString());
 
             if (person == null)
             {
@@ -527,7 +543,7 @@ namespace Rundenzeiten
                 return;
             }
 
-            List<RoundEntry> personEntries = roundEntries
+            var personEntries = roundEntries
                 .Where(x => x.Startnummer == person.Startnummer)
                 .ToList();
 
@@ -551,11 +567,10 @@ namespace Rundenzeiten
                 lapTime = DateTime.Now - start - TimeSpan.FromSeconds(toAdd);
             }
 
-            roundResultLabel.Text =
-                $"Eingetragen - {person.Startnummer} - {Math.Round(lapTime.TotalSeconds, 1)}s";
+            roundResultLabel.Text = $"Eingetragen - {person.Startnummer} - {Math.Round(lapTime.TotalSeconds, 1)}s";
             roundResultLabel.ForeColor = Color.Green;
 
-            roundEntries.Add(new RoundEntry()
+            roundEntries.Add(new RoundEntry
             {
                 Startnummer = person.Startnummer,
                 Time = lapTime
@@ -564,8 +579,14 @@ namespace Rundenzeiten
             saveCSV();
         }
 
+        // ===========================================================
+        //  CSV + EXCEL
+        // ===========================================================
         private void saveCSV()
         {
+            if (string.IsNullOrWhiteSpace(resultFilePath))
+                return;
+
             const string Header =
                 "Platz;PlatzAK;Startnummer;Name;Vorname;Geschlecht;Geburtsdatum;Verein;Strecke;Klasse;Ucicode;Zeit;Rundenzeiten";
 
@@ -582,6 +603,63 @@ namespace Rundenzeiten
             DisplayInGrid(records);
         }
 
+        private List<CSVRecord> BuildRecords()
+        {
+            var result = new List<CSVRecord>();
+
+            foreach (var person in entries)
+            {
+                var personEntries = roundEntries.Where(x => x.Startnummer == person.Startnummer).ToList();
+                var rundenzeiten = personEntries.Select(e => Math.Round(e.Time.TotalSeconds, 1)).ToList();
+
+                result.Add(new CSVRecord
+                {
+                    Geschlecht = person.Geschlecht,
+                    Klasse = person.Klasse,
+                    Name = person.Name,
+                    Platz = 0,
+                    PlatzAK = 0,
+                    Geburtsdatum = person.Geburtsdatum,
+                    Rundenzeiten = rundenzeiten,
+                    Startnummer = person.Startnummer,
+                    Strecke = person.Strecke,
+                    Verein = person.Verein,
+                    Vorname = person.Vorname,
+                    Zeit = TimeSpan.FromSeconds(rundenzeiten.Sum()),
+                    UciCode = person.UciCode,
+                    AltersgruppeHobby = string.Empty
+                });
+            }
+
+            return result;
+        }
+
+        private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
+        {
+            var lines = new List<string> { header };
+
+            foreach (var record in records)
+            {
+                var laps = record.Rundenzeiten ?? new List<double>();
+                string lapsRaw = "[" + string.Join(", ",
+                    laps.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture))) + "]";
+
+                string line =
+                    $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};" +
+                    $"{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};" +
+                    $"{record.UciCode};" +
+                    $"{record.Zeit:hh\\:mm\\:ss} ({laps.Count} Runden);{lapsRaw}";
+
+                lines.Add(line);
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+            File.WriteAllLines(filePath, lines, new UTF8Encoding(true)); // UTF-8 mit BOM
+        }
+
+        // -----------------------------------------------------------
+        //  Excel (gleich wie vorher, nur übernommen)
+        // -----------------------------------------------------------
         private string FindLogoPath()
         {
             string baseDir = Path.Combine(Application.StartupPath, "Vorlagen");
@@ -589,8 +667,7 @@ namespace Rundenzeiten
 
             string[] candidates =
             {
-                "Logo.png", "logo.png", "Logo.jpg", "logo.jpg",
-                "Logo.jpeg", "logo.jpeg"
+                "Logo.png", "logo.png", "Logo.jpg", "logo.jpg", "Logo.jpeg", "logo.jpeg"
             };
 
             foreach (var name in candidates)
@@ -649,7 +726,6 @@ namespace Rundenzeiten
             );
         }
 
-        // Excel-Ausgabe:
         private void SaveToExcelPerClass(List<CSVRecord> records, string filePath)
         {
             // ===== Lokale Helper: Zeilenfärbung nach Regeln (ganze Zeile) =====
@@ -718,7 +794,8 @@ namespace Rundenzeiten
             if (m.Success) rennen = m.Groups[1].Value;
 
             // ===== Header inkl. "UCI-Code" =====
-            string[] header = {
+            string[] header =
+            {
                 "Platz",
                 "PlatzAK",
                 "AK (Hobby)",
@@ -733,36 +810,175 @@ namespace Rundenzeiten
                 "Rundenzeiten"
             };
 
-            int COL_PlatzAK = 2;
-            int COL_AkHobby = 3;
-            int COL_Geschlecht = 7;
+            const int COL_AkHobby = 3;
+            const int COL_Geschlecht = 7;
             int LAST_COL = header.Length;
 
             string logoPath = FindLogoPath();
             double[] masterWidths = null;
 
-            using (var package = new ExcelPackage())
+            using var package = new ExcelPackage();
+
+            // ===== Blatt: Gesamt =====
+            var wsAll = package.Workbook.Worksheets.Add("Gesamt");
+
+            wsAll.Row(1).Height = 36;
+            wsAll.Row(2).Height = 28;
+            wsAll.Row(3).Height = 6;
+            wsAll.Row(4).Height = 6;
+
+            wsAll.Cells[2, 1, 2, header.Length].Merge = true;
+            wsAll.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste (Rennen {rennen})";
+            wsAll.Cells[2, 1].Style.Font.Bold = true;
+            wsAll.Cells[2, 1].Style.Font.Size = 20;
+            wsAll.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            InsertLogo(wsAll, logoPath, "Gesamt");
+
+            int headerRowAll = 5;
+            for (int c = 0; c < header.Length; c++)
             {
-                // ===== Blatt: Gesamt =====
-                var wsAll = package.Workbook.Worksheets.Add("Gesamt");
+                var cell = wsAll.Cells[headerRowAll, c + 1];
+                cell.Value = header[c];
+                cell.Style.Font.Bold = true;
+                cell.Style.Font.Color.SetColor(Color.Black);
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+            }
 
-                wsAll.Row(1).Height = 36;
-                wsAll.Row(2).Height = 28;
-                wsAll.Row(3).Height = 6;
-                wsAll.Row(4).Height = 6;
+            int rowAll = headerRowAll + 1;
+            foreach (var r in records)
+            {
+                bool isHobby = r.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0;
+                string rawAkHobby = r?.AltersgruppeHobby ?? "";
 
-                wsAll.Cells[2, 1, 2, header.Length].Merge = true;
-                wsAll.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste (Rennen {rennen})";
-                wsAll.Cells[2, 1].Style.Font.Bold = true;
-                wsAll.Cells[2, 1].Style.Font.Size = 20;
-                wsAll.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                int? platzAkFromText = null;
+                string akGroupLabel = rawAkHobby;
 
-                InsertLogo(wsAll, logoPath, "Gesamt");
+                if (!string.IsNullOrWhiteSpace(rawAkHobby))
+                {
+                    var parts = rawAkHobby.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0 && int.TryParse(parts[0], out int parsedPlatz))
+                    {
+                        platzAkFromText = parsedPlatz;
+                        akGroupLabel = parts.Length > 1 ? parts[1] : "";
+                    }
+                }
 
-                int headerRowAll = 5;
+                object platzAkCell;
+                if (!IsCrossImBadSelected() || !isHobby)
+                {
+                    platzAkCell = (r?.PlatzAK > 0 ? r.PlatzAK : (int?)null);
+                }
+                else
+                {
+                    if (r?.PlatzAK > 0)
+                        platzAkCell = r.PlatzAK;
+                    else if (platzAkFromText.HasValue)
+                        platzAkCell = platzAkFromText.Value;
+                    else
+                        platzAkCell = null;
+                }
+
+                wsAll.Cells[rowAll, 1].Value = r?.Platz;
+                wsAll.Cells[rowAll, 2].Value = platzAkCell;
+                wsAll.Cells[rowAll, 3].Value = akGroupLabel;
+                wsAll.Cells[rowAll, 4].Value = r?.Startnummer;
+                wsAll.Cells[rowAll, 5].Value = r?.Name ?? "";
+                wsAll.Cells[rowAll, 6].Value = r?.Vorname ?? "";
+                wsAll.Cells[rowAll, 7].Value = r?.Geschlecht ?? "";
+                wsAll.Cells[rowAll, 8].Value = r?.Verein ?? "";
+                wsAll.Cells[rowAll, 9].Value = r?.UciCode ?? "";
+                wsAll.Cells[rowAll, 10].Value = r?.Klasse ?? "";
+                wsAll.Cells[rowAll, 11].Value = ToHhMmSs(r?.Zeit);
+                wsAll.Cells[rowAll, 12].Value = FormatLapList(r?.Rundenzeiten);
+                rowAll++;
+            }
+
+            if (rowAll > headerRowAll + 1)
+            {
+                var rangeAll = wsAll.Cells[headerRowAll, 1, rowAll - 1, header.Length];
+                var tblAll = wsAll.Tables.Add(rangeAll, "tbl_Gesamt");
+                tblAll.TableStyle = TableStyles.Medium2;
+            }
+
+            wsAll.View.FreezePanes(headerRowAll + 1, 1);
+
+            if (wsAll.Dimension != null)
+            {
+                wsAll.Cells[wsAll.Dimension.Address].AutoFitColumns(8, 28);
+
+                wsAll.Column(1).Width = 8;
+                wsAll.Column(2).Width = 10;
+                wsAll.Column(3).Width = 10;
+                wsAll.Column(4).Width = 14;
+                wsAll.Column(5).Width = 16;
+                wsAll.Column(6).Width = 14;
+                wsAll.Column(7).Width = 10;
+                wsAll.Column(8).Width = 30;
+                wsAll.Column(9).Width = 16;
+                wsAll.Column(10).Width = 12;
+                wsAll.Column(11).Width = 10;
+                wsAll.Column(12).Width = 34;
+
+                if (rowAll > headerRowAll + 1)
+                {
+                    wsAll.Cells[headerRowAll + 1, 8, rowAll - 1, 8].Style.WrapText = true;
+                    wsAll.Cells[headerRowAll + 1, 12, rowAll - 1, 12].Style.WrapText = true;
+                }
+
+                wsAll.Row(headerRowAll).Height = 20;
+
+                masterWidths = new double[header.Length];
+                for (int c = 1; c <= header.Length; c++)
+                    masterWidths[c - 1] = wsAll.Column(c).Width;
+            }
+
+            wsAll.PrinterSettings.Orientation = eOrientation.Landscape;
+            wsAll.PrinterSettings.FitToPage = true;
+            wsAll.PrinterSettings.FitToWidth = 1;
+            wsAll.PrinterSettings.FitToHeight = 0;
+
+            var groups = records
+                .GroupBy(r => r?.Klasse ?? "Unbekannt")
+                .OrderBy(g => g.Key);
+
+            int linkRow = 2;
+
+            int dataStartAll = headerRowAll + 1;
+            int dataEndAll = rowAll - 1;
+            AddRowShading(wsAll, dataStartAll, dataEndAll, COL_AkHobby, COL_Geschlecht, LAST_COL);
+
+            foreach (var g in groups)
+            {
+                string rawName = g.Key;
+                string sheetName = SanitizeName(rawName);
+                string uniqueName = sheetName;
+                int suffix = 2;
+
+                while (package.Workbook.Worksheets.Any(ws => ws.Name.Equals(uniqueName, StringComparison.OrdinalIgnoreCase)))
+                    uniqueName = SanitizeName($"{sheetName}_{suffix++}");
+
+                var ws = package.Workbook.Worksheets.Add(uniqueName);
+
+                ws.Row(1).Height = 36;
+                ws.Row(2).Height = 28;
+                ws.Row(3).Height = 6;
+                ws.Row(4).Height = 6;
+
+                ws.Cells[2, 1, 2, header.Length].Merge = true;
+                ws.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste – {rawName} (Rennen {rennen})";
+                ws.Cells[2, 1].Style.Font.Bold = true;
+                ws.Cells[2, 1].Style.Font.Size = 20;
+                ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                InsertLogo(ws, logoPath, uniqueName);
+
+                int headerRow = 5;
                 for (int c = 0; c < header.Length; c++)
                 {
-                    var cell = wsAll.Cells[headerRowAll, c + 1];
+                    var cell = ws.Cells[headerRow, c + 1];
                     cell.Value = header[c];
                     cell.Style.Font.Bold = true;
                     cell.Style.Font.Color.SetColor(Color.Black);
@@ -771,8 +987,9 @@ namespace Rundenzeiten
                     cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
                 }
 
-                int rowAll = headerRowAll + 1;
-                foreach (var r in records)
+                var data = g.OrderBy(r => r?.Platz ?? int.MaxValue).ToList();
+                int row = headerRow + 1;
+                foreach (var r in data)
                 {
                     bool isHobby = r.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0;
                     string rawAkHobby = r?.AltersgruppeHobby ?? "";
@@ -786,10 +1003,7 @@ namespace Rundenzeiten
                         if (parts.Length > 0 && int.TryParse(parts[0], out int parsedPlatz))
                         {
                             platzAkFromText = parsedPlatz;
-                            if (parts.Length > 1)
-                                akGroupLabel = parts[1];
-                            else
-                                akGroupLabel = "";
+                            akGroupLabel = parts.Length > 1 ? parts[1] : "";
                         }
                     }
 
@@ -808,213 +1022,70 @@ namespace Rundenzeiten
                             platzAkCell = null;
                     }
 
-                    wsAll.Cells[rowAll, 1].Value = r?.Platz;
-                    wsAll.Cells[rowAll, 2].Value = platzAkCell;          // nur Nummer
-                    wsAll.Cells[rowAll, 3].Value = akGroupLabel;         // U40 / Ü40 / Ü50
-                    wsAll.Cells[rowAll, 4].Value = r?.Startnummer;
-                    wsAll.Cells[rowAll, 5].Value = r?.Name ?? "";
-                    wsAll.Cells[rowAll, 6].Value = r?.Vorname ?? "";
-                    wsAll.Cells[rowAll, 7].Value = r?.Geschlecht ?? "";
-                    wsAll.Cells[rowAll, 8].Value = r?.Verein ?? "";
-                    wsAll.Cells[rowAll, 9].Value = r?.UciCode ?? "";
-                    wsAll.Cells[rowAll, 10].Value = r?.Klasse ?? "";
-                    wsAll.Cells[rowAll, 11].Value = ToHhMmSs(r?.Zeit);
-                    wsAll.Cells[rowAll, 12].Value = FormatLapList(r?.Rundenzeiten);
-                    rowAll++;
+                    ws.Cells[row, 1].Value = r?.Platz;
+                    ws.Cells[row, 2].Value = platzAkCell;
+                    ws.Cells[row, 3].Value = akGroupLabel;
+                    ws.Cells[row, 4].Value = r?.Startnummer;
+                    ws.Cells[row, 5].Value = r?.Name ?? "";
+                    ws.Cells[row, 6].Value = r?.Vorname ?? "";
+                    ws.Cells[row, 7].Value = r?.Geschlecht ?? "";
+                    ws.Cells[row, 8].Value = r?.Verein ?? "";
+                    ws.Cells[row, 9].Value = r?.UciCode ?? "";
+                    ws.Cells[row, 10].Value = r?.Klasse ?? "";
+                    ws.Cells[row, 11].Value = ToHhMmSs(r?.Zeit);
+                    ws.Cells[row, 12].Value = FormatLapList(r?.Rundenzeiten);
+                    row++;
                 }
 
-                if (rowAll > headerRowAll + 1)
+                if (row > headerRow + 1)
                 {
-                    var rangeAll = wsAll.Cells[headerRowAll, 1, rowAll - 1, header.Length];
-                    var tblAll = wsAll.Tables.Add(rangeAll, "tbl_Gesamt");
-                    tblAll.TableStyle = TableStyles.Medium2;
+                    var range = ws.Cells[headerRow, 1, row - 1, header.Length];
+                    var tableName = "tbl_" + Regex.Replace(uniqueName, @"\W", "");
+                    var tbl = ws.Tables.Add(range, tableName);
+                    tbl.TableStyle = TableStyles.Medium2;
                 }
 
-                wsAll.View.FreezePanes(headerRowAll + 1, 1);
-
-                if (wsAll.Dimension != null)
+                if (ws.Dimension != null)
                 {
-                    wsAll.Cells[wsAll.Dimension.Address].AutoFitColumns(8, 28);
+                    ws.Cells[ws.Dimension.Address].AutoFitColumns(8, 28);
 
-                    wsAll.Column(1).Width = 8;
-                    wsAll.Column(2).Width = 10;
-                    wsAll.Column(3).Width = 10;
-                    wsAll.Column(4).Width = 14;
-                    wsAll.Column(5).Width = 16;
-                    wsAll.Column(6).Width = 14;
-                    wsAll.Column(7).Width = 10;
-                    wsAll.Column(8).Width = 30;
-                    wsAll.Column(9).Width = 16;
-                    wsAll.Column(10).Width = 12;
-                    wsAll.Column(11).Width = 10;
-                    wsAll.Column(12).Width = 34;
-
-                    if (rowAll > headerRowAll + 1)
+                    if (masterWidths != null)
                     {
-                        wsAll.Cells[headerRowAll + 1, 8, rowAll - 1, 8].Style.WrapText = true;
-                        wsAll.Cells[headerRowAll + 1, 12, rowAll - 1, 12].Style.WrapText = true;
-                    }
-
-                    wsAll.Row(headerRowAll).Height = 20;
-
-                    masterWidths = new double[header.Length];
-                    for (int c = 1; c <= header.Length; c++)
-                        masterWidths[c - 1] = wsAll.Column(c).Width;
-                }
-
-                wsAll.PrinterSettings.Orientation = eOrientation.Landscape;
-                wsAll.PrinterSettings.FitToPage = true;
-                wsAll.PrinterSettings.FitToWidth = 1;
-                wsAll.PrinterSettings.FitToHeight = 0;
-
-                var groups = records
-                    .GroupBy(r => r?.Klasse ?? "Unbekannt")
-                    .OrderBy(g => g.Key);
-
-                int linkRow = 2;
-
-                int dataStartAll = headerRowAll + 1;
-                int dataEndAll = rowAll - 1;
-                AddRowShading(wsAll, dataStartAll, dataEndAll, COL_AkHobby, COL_Geschlecht, LAST_COL);
-
-                foreach (var g in groups)
-                {
-                    string rawName = g.Key;
-                    string sheetName = SanitizeName(rawName);
-                    string uniqueName = sheetName;
-                    int suffix = 2;
-
-                    while (package.Workbook.Worksheets.Any(ws => ws.Name.Equals(uniqueName, StringComparison.OrdinalIgnoreCase)))
-                        uniqueName = SanitizeName($"{sheetName}_{suffix++}");
-
-                    var ws = package.Workbook.Worksheets.Add(uniqueName);
-
-                    ws.Row(1).Height = 36;
-                    ws.Row(2).Height = 28;
-                    ws.Row(3).Height = 6;
-                    ws.Row(4).Height = 6;
-
-                    ws.Cells[2, 1, 2, header.Length].Merge = true;
-                    ws.Cells[2, 1].Value = $"{veranstaltung} – Ergebnisliste – {rawName} (Rennen {rennen})";
-                    ws.Cells[2, 1].Style.Font.Bold = true;
-                    ws.Cells[2, 1].Style.Font.Size = 20;
-                    ws.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    InsertLogo(ws, logoPath, uniqueName);
-
-                    int headerRow = 5;
-                    for (int c = 0; c < header.Length; c++)
-                    {
-                        var cell = ws.Cells[headerRow, c + 1];
-                        cell.Value = header[c];
-                        cell.Style.Font.Bold = true;
-                        cell.Style.Font.Color.SetColor(Color.Black);
-                        cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                        cell.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
-                        cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                    }
-
-                    var data = g.OrderBy(r => r?.Platz ?? int.MaxValue).ToList();
-                    int row = headerRow + 1;
-                    foreach (var r in data)
-                    {
-                        bool isHobby = r.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0;
-                        string rawAkHobby = r?.AltersgruppeHobby ?? "";
-
-                        int? platzAkFromText = null;
-                        string akGroupLabel = rawAkHobby;
-
-                        if (!string.IsNullOrWhiteSpace(rawAkHobby))
-                        {
-                            var parts = rawAkHobby.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
-                            if (parts.Length > 0 && int.TryParse(parts[0], out int parsedPlatz))
-                            {
-                                platzAkFromText = parsedPlatz;
-                                if (parts.Length > 1)
-                                    akGroupLabel = parts[1];
-                                else
-                                    akGroupLabel = "";
-                            }
-                        }
-
-                        object platzAkCell;
-                        if (!IsCrossImBadSelected() || !isHobby)
-                        {
-                            platzAkCell = (r?.PlatzAK > 0 ? r.PlatzAK : (int?)null);
-                        }
-                        else
-                        {
-                            if (r?.PlatzAK > 0)
-                                platzAkCell = r.PlatzAK;
-                            else if (platzAkFromText.HasValue)
-                                platzAkCell = platzAkFromText.Value;
-                            else
-                                platzAkCell = null;
-                        }
-
-                        ws.Cells[row, 1].Value = r?.Platz;
-                        ws.Cells[row, 2].Value = platzAkCell;
-                        ws.Cells[row, 3].Value = akGroupLabel;
-                        ws.Cells[row, 4].Value = r?.Startnummer;
-                        ws.Cells[row, 5].Value = r?.Name ?? "";
-                        ws.Cells[row, 6].Value = r?.Vorname ?? "";
-                        ws.Cells[row, 7].Value = r?.Geschlecht ?? "";
-                        ws.Cells[row, 8].Value = r?.Verein ?? "";
-                        ws.Cells[row, 9].Value = r?.UciCode ?? "";
-                        ws.Cells[row, 10].Value = r?.Klasse ?? "";
-                        ws.Cells[row, 11].Value = ToHhMmSs(r?.Zeit);
-                        ws.Cells[row, 12].Value = FormatLapList(r?.Rundenzeiten);
-                        row++;
+                        for (int c = 1; c <= header.Length; c++)
+                            ws.Column(c).Width = masterWidths[c - 1];
                     }
 
                     if (row > headerRow + 1)
                     {
-                        var range = ws.Cells[headerRow, 1, row - 1, header.Length];
-                        var tableName = "tbl_" + Regex.Replace(uniqueName, @"\W", "");
-                        var tbl = ws.Tables.Add(range, tableName);
-                        tbl.TableStyle = TableStyles.Medium2;
+                        ws.Cells[headerRow + 1, 8, row - 1, 8].Style.WrapText = true;
+                        ws.Cells[headerRow + 1, 12, row - 1, 12].Style.WrapText = true;
                     }
 
-                    if (ws.Dimension != null)
-                    {
-                        ws.Cells[ws.Dimension.Address].AutoFitColumns(8, 28);
-
-                        if (masterWidths != null)
-                        {
-                            for (int c = 1; c <= header.Length; c++)
-                                ws.Column(c).Width = masterWidths[c - 1];
-                        }
-
-                        if (row > headerRow + 1)
-                        {
-                            ws.Cells[headerRow + 1, 8, row - 1, 8].Style.WrapText = true;
-                            ws.Cells[headerRow + 1, 12, row - 1, 12].Style.WrapText = true;
-                        }
-
-                        ws.Row(headerRow).Height = 20;
-                    }
-
-                    ws.View.FreezePanes(headerRow + 1, 1);
-                    ws.PrinterSettings.Orientation = eOrientation.Landscape;
-                    ws.PrinterSettings.FitToPage = true;
-                    ws.PrinterSettings.FitToWidth = 1;
-                    ws.PrinterSettings.FitToHeight = 0;
-
-                    int dataStart = headerRow + 1;
-                    int dataEnd = row - 1;
-                    AddRowShading(ws, dataStart, dataEnd, COL_AkHobby, COL_Geschlecht, LAST_COL);
-
-                    wsAll.Cells[linkRow, header.Length].Hyperlink =
-                        new ExcelHyperLink($"'{uniqueName}'!A1", rawName);
-                    wsAll.Cells[linkRow, header.Length].Value = rawName;
-                    linkRow++;
+                    ws.Row(headerRow).Height = 20;
                 }
 
-                package.SaveAs(new FileInfo(excelPath));
+                ws.View.FreezePanes(headerRow + 1, 1);
+                ws.PrinterSettings.Orientation = eOrientation.Landscape;
+                ws.PrinterSettings.FitToPage = true;
+                ws.PrinterSettings.FitToWidth = 1;
+                ws.PrinterSettings.FitToHeight = 0;
+
+                int dataStart = headerRow + 1;
+                int dataEnd = row - 1;
+                AddRowShading(ws, dataStart, dataEnd, COL_AkHobby, COL_Geschlecht, LAST_COL);
+
+                wsAll.Cells[linkRow, header.Length].Hyperlink =
+                    new ExcelHyperLink($"'{uniqueName}'!A1", rawName);
+                wsAll.Cells[linkRow, header.Length].Value = rawName;
+                linkRow++;
             }
+
+            package.SaveAs(new FileInfo(excelPath));
         }
 
-        // Alter
+        // ===========================================================
+        //  ALTER / HOBBY-BUCKET / RANGFOLGE
+        // ===========================================================
         private bool TryParseGeburtsdatum(string s, out DateTime geb)
         {
             geb = DateTime.MinValue;
@@ -1053,95 +1124,6 @@ namespace Rundenzeiten
             if (age >= 50) return "Ü50";
             if (age >= 40) return "Ü40";
             return "";
-        }
-
-        private void DisplayInGrid(List<CSVRecord> records)
-        {
-            var table = new DataTable();
-
-            table.Columns.Add("Platz", typeof(int));
-            table.Columns.Add("PlatzAK", typeof(int));
-            table.Columns.Add("Startnummer", typeof(int));
-
-            table.Columns.Add("Name", typeof(string));
-            table.Columns.Add("Vorname", typeof(string));
-            table.Columns.Add("Verein", typeof(string));
-            table.Columns.Add("Geschlecht", typeof(string));
-            table.Columns.Add("Klasse", typeof(string));
-            table.Columns.Add("Zeit", typeof(string));
-            table.Columns.Add("Rundenzeiten", typeof(string));
-
-            table.Columns.Add("GeschlechtSort", typeof(int)); // 0=m, 1=w, 2=sonst
-            table.Columns.Add("AK", typeof(int));             // numerisch aus Klasse
-
-            int GenderKey(string g)
-            {
-                if (string.IsNullOrWhiteSpace(g)) return 2;
-                g = g.Trim().ToLowerInvariant();
-                if (g.StartsWith("m")) return 0;
-                if (g.StartsWith("w")) return 1;
-                return 2;
-            }
-
-            foreach (var r in records)
-            {
-                int.TryParse(r.Startnummer, out var startnr);
-                int ak = ExtractAgeClass(r.Klasse);
-                int gSort = GenderKey(r.Geschlecht);
-
-                string rundenText = "[" + string.Join(", ",
-                    (r.Rundenzeiten ?? new List<double>())
-                        .Select(sec =>
-                            TimeSpan.FromSeconds(double.IsFinite(sec) && sec >= 0 ? sec : 0)
-                                .ToString(@"mm\:ss"))
-                ) + "]";
-
-                table.Rows.Add(
-                    r.Platz,
-                    r.PlatzAK,
-                    startnr,
-                    r.Name ?? "",
-                    r.Vorname ?? "",
-                    r.Verein ?? "",
-                    r.Geschlecht ?? "",
-                    r.Klasse ?? "",
-                    r.Zeit.ToString(@"hh\:mm\:ss") + $" ({r.Rundenzeiten?.Count ?? 0} Runden)",
-                    rundenText,
-                    gSort,
-                    ak
-                );
-            }
-
-            var view = table.DefaultView;
-            view.Sort = "Klasse ASC, GeschlechtSort ASC, PlatzAK ASC";
-
-            resultGrid.DataSource = view;
-
-            if (resultGrid.Columns.Contains("AK")) resultGrid.Columns["AK"].Visible = false;
-            if (resultGrid.Columns.Contains("GeschlechtSort")) resultGrid.Columns["GeschlechtSort"].Visible = false;
-        }
-
-        private void SaveToCsvFile(List<CSVRecord> records, string header, string filePath)
-        {
-            var lines = new List<string> { header };
-
-            foreach (var record in records)
-            {
-                var laps = record.Rundenzeiten ?? new List<double>();
-                string lapsRaw = "[" + string.Join(", ",
-                    laps.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture))) + "]";
-
-                string line =
-                    $"{record.Platz};{record.PlatzAK};{record.Startnummer};{record.Name};{record.Vorname};" +
-                    $"{record.Geschlecht};{record.Geburtsdatum};{record.Verein};{record.Strecke};{record.Klasse};" +
-                    $"{record.UciCode};" +
-                    $"{record.Zeit:hh\\:mm\\:ss} ({laps.Count} Runden);{lapsRaw}";
-
-                lines.Add(line);
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-            File.WriteAllLines(filePath, lines, new UTF8Encoding(true)); // UTF-8 mit BOM
         }
 
         private void RankRecords(List<CSVRecord> records)
@@ -1235,66 +1217,83 @@ namespace Rundenzeiten
             return int.MaxValue;
         }
 
-        private List<CSVRecord> BuildRecords()
+        // ===========================================================
+        //  GRID-AUSGABE
+        // ===========================================================
+        private void DisplayInGrid(List<CSVRecord> records)
         {
-            var result = new List<CSVRecord>();
+            var table = new DataTable();
 
-            foreach (var person in entries)
+            table.Columns.Add("Platz", typeof(int));
+            table.Columns.Add("PlatzAK", typeof(int));
+            table.Columns.Add("Startnummer", typeof(int));
+
+            table.Columns.Add("Name", typeof(string));
+            table.Columns.Add("Vorname", typeof(string));
+            table.Columns.Add("Verein", typeof(string));
+            table.Columns.Add("Geschlecht", typeof(string));
+            table.Columns.Add("Klasse", typeof(string));
+            table.Columns.Add("Zeit", typeof(string));
+            table.Columns.Add("Rundenzeiten", typeof(string));
+
+            table.Columns.Add("GeschlechtSort", typeof(int)); // 0=m, 1=w, 2=sonst
+            table.Columns.Add("AK", typeof(int));             // numerisch aus Klasse
+
+            int GenderKey(string g)
             {
-                var personEntries = roundEntries.Where(x => x.Startnummer == person.Startnummer).ToList();
-                var rundenzeiten = personEntries.Select(e => Math.Round(e.Time.TotalSeconds, 1)).ToList();
-
-                result.Add(new CSVRecord
-                {
-                    Geschlecht = person.Geschlecht,
-                    Klasse = person.Klasse,
-                    Name = person.Name,
-                    Platz = 0,
-                    PlatzAK = 0,
-                    Geburtsdatum = person.Geburtsdatum,
-                    Rundenzeiten = rundenzeiten,
-                    Startnummer = person.Startnummer,
-                    Strecke = person.Strecke,
-                    Verein = person.Verein,
-                    Vorname = person.Vorname,
-                    Zeit = TimeSpan.FromSeconds(rundenzeiten.Sum()),
-                    UciCode = person.UciCode,
-                    AltersgruppeHobby = string.Empty
-                });
+                if (string.IsNullOrWhiteSpace(g)) return 2;
+                g = g.Trim().ToLowerInvariant();
+                if (g.StartsWith("m")) return 0;
+                if (g.StartsWith("w")) return 1;
+                return 2;
             }
 
-            return result;
+            foreach (var r in records)
+            {
+                int.TryParse(r.Startnummer, out var startnr);
+                int ak = ExtractAgeClass(r.Klasse);
+                int gSort = GenderKey(r.Geschlecht);
+
+                string rundenText = "[" + string.Join(", ",
+                    (r.Rundenzeiten ?? new List<double>())
+                        .Select(sec =>
+                            TimeSpan.FromSeconds(double.IsFinite(sec) && sec >= 0 ? sec : 0)
+                                .ToString(@"mm\:ss"))
+                ) + "]";
+
+                table.Rows.Add(
+                    r.Platz,
+                    r.PlatzAK,
+                    startnr,
+                    r.Name ?? "",
+                    r.Vorname ?? "",
+                    r.Verein ?? "",
+                    r.Geschlecht ?? "",
+                    r.Klasse ?? "",
+                    r.Zeit.ToString(@"hh\:mm\:ss") + $" ({r.Rundenzeiten?.Count ?? 0} Runden)",
+                    rundenText,
+                    gSort,
+                    ak
+                );
+            }
+
+            var view = table.DefaultView;
+            view.Sort = "Klasse ASC, GeschlechtSort ASC, PlatzAK ASC";
+
+            resultGrid.DataSource = view;
+
+            if (resultGrid.Columns.Contains("AK")) resultGrid.Columns["AK"].Visible = false;
+            if (resultGrid.Columns.Contains("GeschlechtSort")) resultGrid.Columns["GeschlechtSort"].Visible = false;
         }
 
-        // Leere Event-Handler – kannst du im Designer entkoppeln und dann löschen
+        // ===========================================================
+        //  LEERE EVENT-HANDLER (vom Designer)
+        // ===========================================================
         private void remainingTime_Click(object sender, EventArgs e) { }
         private void label4_Click(object sender, EventArgs e) { }
         private void Form1_Load(object sender, EventArgs e) { }
         private void label6_Click(object sender, EventArgs e) { }
         private void pictureBox1_Click(object sender, EventArgs e) { }
         private void classStatusLabel_Click(object sender, EventArgs e) { }
-
-        private void InitializeComponent()
-        {
-
-        }
-
-        private void startNumberInput_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyData == Keys.Enter)
-            {
-                int startNumber = 0;
-
-                try
-                {
-                    startNumber = Convert.ToInt32(startNumberInput.Text);
-                }
-                catch { }
-
-                enterRound(startNumber);
-            }
-        }
     }
 }
-
-
