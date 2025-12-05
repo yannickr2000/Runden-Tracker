@@ -1,8 +1,4 @@
-﻿using System;
-using System.Windows.Forms;
-using System.Drawing;
-
-namespace Rundenzeiten
+﻿namespace Rundenzeiten
 {
     partial class Form1
     {

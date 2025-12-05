@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
@@ -1294,6 +1295,7 @@ namespace Rundenzeiten
         private void Form1_Load(object sender, EventArgs e) { }
         private void label6_Click(object sender, EventArgs e) { }
         private void pictureBox1_Click(object sender, EventArgs e) { }
+
         private void classStatusLabel_Click(object sender, EventArgs e) { }
     }
 }
