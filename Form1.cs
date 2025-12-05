@@ -68,6 +68,15 @@ namespace Rundenzeiten
             countdownTimer.Tick += CountdownTimer_Tick;
             countdownTimer.Start();
 
+            // Rennen-Start-Button erstmal sperren
+            startRaceBtn.Enabled = false;
+
+            // CheckedListBox für Klassenstarts konfigurieren
+            classMultiList.DrawMode = DrawMode.OwnerDrawFixed;
+            classMultiList.DrawItem += classMultiList_DrawItem;
+            classMultiList.ItemCheck += classMultiList_ItemCheck;
+            classMultiList.MouseDown += classMultiList_MouseDown;
+
             // Startnummerfeld & Button sperren bis Rennstart
             startNumberInput.Enabled = false;
             enterRoundBtn.Enabled = false;
@@ -179,7 +188,7 @@ namespace Rundenzeiten
             saveCSV();
             starterListLabel.Text = "Teilnehmer geladen";
             starterListBtn.BackColor = Color.LightGreen;
-            startRaceBtn.Enabled = true;
+            //startRaceBtn.Enabled = true;
 
             UpdateClassStartUIState();
             UpdateClassStatusLabel();
@@ -278,8 +287,17 @@ namespace Rundenzeiten
         // ===========================================================
         private void startClassBtn_Click(object sender, EventArgs e)
         {
-            if (!IsCrossImBadSelected()) return;
+            // Sicherheit: Klassen erst starten, wenn das Rennen läuft
             if (!RaceRunning) return;
+
+            // aktuell angehakten Klassen mit JETZT starten
+            StartSelectedClasses(DateTime.Now);
+        }
+
+        // startet alle aktuell angehakten, noch nicht gestarteten Klassen
+        private void StartSelectedClasses(DateTime startTime)
+        {
+            if (!IsCrossImBadSelected()) return;
             if (classMultiList == null || classMultiList.Items.Count == 0) return;
 
             var toStart = classMultiList.CheckedItems
@@ -292,16 +310,15 @@ namespace Rundenzeiten
             if (toStart.Count == 0)
                 return;
 
+            // nur Klassen, die noch keine Startzeit haben
             var fresh = toStart.Where(k => !classStartTimes.ContainsKey(k)).ToList();
             if (fresh.Count == 0)
                 return;
 
-            var t0 = DateTime.Now;
-
             foreach (var k in fresh)
-                classStartTimes[k] = t0;
+                classStartTimes[k] = startTime;
 
-            // UI aktualisieren
+            // UI aktualisieren: gestartete Klassen grau & gesperrt
             for (int i = 0; i < classMultiList.Items.Count; i++)
             {
                 var name = Norm(classMultiList.Items[i]?.ToString());
@@ -388,12 +405,36 @@ namespace Rundenzeiten
                 }
             }
 
-            // Button nur aktiv, wenn:
+            // Button "Klasse starten" nur aktiv, wenn:
             // - CrossImBad
             // - Starterliste geladen
             // - Rennen läuft
             // - mind. eine noch nicht gestartete Klasse angehakt
             startClassBtn.Enabled = canUseClasses && RaceRunning && anyFreshChecked;
+
+            // ------------------------------------------------------
+            // Button "Rennen starten" steuern
+            // ------------------------------------------------------
+            // Wenn das Rennen schon läuft, soll man immer beenden können
+            if (RaceRunning)
+            {
+                startRaceBtn.Enabled = true;
+            }
+            else
+            {
+                bool hasEntries = entries.Count > 0;
+
+                if (IsCrossImBadSelected())
+                {
+                    // Bei CrossImBad: Rennen starten erst, wenn mind. eine (frische) Klasse angehakt ist
+                    startRaceBtn.Enabled = hasEntries && anyFreshChecked;
+                }
+                else
+                {
+                    // Andere Veranstaltungen dürfen auch ohne Klassenstart loslaufen
+                    startRaceBtn.Enabled = hasEntries;
+                }
+            }
         }
 
         private void UpdateClassStatusLabel()
@@ -469,11 +510,11 @@ namespace Rundenzeiten
                 saveCSV();
                 Environment.Exit(0);
             }
-
+            // Neues Rennen starten
             start = DateTime.Now;
             raceStart = start;
             end = start.AddMinutes(Convert.ToInt32(raceDuration.Value));
-
+            // alle Klassen-Startzeiten zurücksetzen (neues Rennen)
             classStartTimes.Clear();
 
             startRaceBtn.BackColor = Color.Red;
@@ -486,6 +527,10 @@ namespace Rundenzeiten
             raceDuration.Enabled = false;
             confirmDurationBtn.Enabled = false;
 
+            if (IsCrossImBadSelected())
+            {
+                StartSelectedClasses(start);
+            }
             UpdateClassStartUIState();
         }
 

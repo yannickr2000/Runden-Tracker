@@ -29,348 +29,344 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            this.raceDuration = new System.Windows.Forms.NumericUpDown();
-            this.confirmDurationBtn = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.starterListBtn = new System.Windows.Forms.Button();
-            this.starterListLabel = new System.Windows.Forms.Label();
-            this.startRaceBtn = new System.Windows.Forms.Button();
-            this.remainingTime = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.enterRoundBtn = new System.Windows.Forms.Button();
-            this.roundResultLabel = new System.Windows.Forms.Label();
-            this.resultGrid = new System.Windows.Forms.DataGridView();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.classStatusLabel = new System.Windows.Forms.Label();
-            this.classMultiList = new System.Windows.Forms.CheckedListBox();
-            this.startClassBtn = new System.Windows.Forms.Button();
-            this.startNumberInput = new System.Windows.Forms.TextBox();
-            this.panel4 = new System.Windows.Forms.Panel();
-            this.label6 = new System.Windows.Forms.Label();
-            this.raceNameComboBox = new System.Windows.Forms.ComboBox();
-            this.label4 = new System.Windows.Forms.Label();
-            this.panel2 = new System.Windows.Forms.Panel();
-            this.label5 = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.raceDuration)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.resultGrid)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.panel1.SuspendLayout();
-            this.panel4.SuspendLayout();
-            this.SuspendLayout();
+            raceDuration = new NumericUpDown();
+            confirmDurationBtn = new Button();
+            label1 = new Label();
+            label2 = new Label();
+            starterListBtn = new Button();
+            starterListLabel = new Label();
+            startRaceBtn = new Button();
+            remainingTime = new Label();
+            label3 = new Label();
+            enterRoundBtn = new Button();
+            roundResultLabel = new Label();
+            resultGrid = new DataGridView();
+            pictureBox1 = new PictureBox();
+            panel1 = new Panel();
+            classStatusLabel = new Label();
+            classMultiList = new CheckedListBox();
+            startClassBtn = new Button();
+            startNumberInput = new TextBox();
+            panel4 = new Panel();
+            label6 = new Label();
+            raceNameComboBox = new ComboBox();
+            label4 = new Label();
+            panel2 = new Panel();
+            label5 = new Label();
+            ((System.ComponentModel.ISupportInitialize)raceDuration).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)resultGrid).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
+            panel1.SuspendLayout();
+            panel4.SuspendLayout();
+            SuspendLayout();
             // 
             // raceDuration
             // 
-            this.raceDuration.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.raceDuration.Location = new System.Drawing.Point(17, 178);
-            this.raceDuration.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.raceDuration.Maximum = new decimal(new int[] {
-            10000,
-            0,
-            0,
-            0});
-            this.raceDuration.Name = "raceDuration";
-            this.raceDuration.Size = new System.Drawing.Size(160, 30);
-            this.raceDuration.TabIndex = 0;
+            raceDuration.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            raceDuration.Location = new Point(17, 178);
+            raceDuration.Margin = new Padding(4, 5, 4, 5);
+            raceDuration.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
+            raceDuration.Name = "raceDuration";
+            raceDuration.Size = new Size(160, 30);
+            raceDuration.TabIndex = 0;
             // 
             // confirmDurationBtn
             // 
-            this.confirmDurationBtn.Font = new System.Drawing.Font("Segoe UI Semibold", 10.2F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.confirmDurationBtn.Location = new System.Drawing.Point(190, 150);
-            this.confirmDurationBtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.confirmDurationBtn.Name = "confirmDurationBtn";
-            this.confirmDurationBtn.Size = new System.Drawing.Size(110, 58);
-            this.confirmDurationBtn.TabIndex = 1;
-            this.confirmDurationBtn.Text = "Bestätigen";
-            this.confirmDurationBtn.UseVisualStyleBackColor = true;
-            this.confirmDurationBtn.Click += new System.EventHandler(this.confirmDurationBtn_Click);
+            confirmDurationBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            confirmDurationBtn.Location = new Point(190, 150);
+            confirmDurationBtn.Margin = new Padding(4, 5, 4, 5);
+            confirmDurationBtn.Name = "confirmDurationBtn";
+            confirmDurationBtn.Size = new Size(110, 58);
+            confirmDurationBtn.TabIndex = 1;
+            confirmDurationBtn.Text = "Bestätigen";
+            confirmDurationBtn.UseVisualStyleBackColor = true;
+            confirmDurationBtn.Click += confirmDurationBtn_Click;
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(17, 150);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(166, 23);
-            this.label1.TabIndex = 2;
-            this.label1.Text = "Renndauer Minuten:";
+            label1.AutoSize = true;
+            label1.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            label1.Location = new Point(17, 150);
+            label1.Margin = new Padding(4, 0, 4, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(166, 23);
+            label1.TabIndex = 2;
+            label1.Text = "Renndauer Minuten:";
             // 
             // label2
             // 
-            this.label2.AutoSize = true;
-            this.label2.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label2.Location = new System.Drawing.Point(17, 226);
-            this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(130, 23);
-            this.label2.TabIndex = 5;
-            this.label2.Text = "Startliste Laden:";
+            label2.AutoSize = true;
+            label2.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            label2.Location = new Point(17, 226);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(130, 23);
+            label2.TabIndex = 5;
+            label2.Text = "Startliste Laden:";
             // 
             // starterListBtn
             // 
-            this.starterListBtn.Enabled = false;
-            this.starterListBtn.Font = new System.Drawing.Font("Segoe UI Semibold", 10.2F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.starterListBtn.Location = new System.Drawing.Point(190, 226);
-            this.starterListBtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.starterListBtn.Name = "starterListBtn";
-            this.starterListBtn.Size = new System.Drawing.Size(110, 59);
-            this.starterListBtn.TabIndex = 4;
-            this.starterListBtn.Text = "Auswahl";
-            this.starterListBtn.UseVisualStyleBackColor = true;
-            this.starterListBtn.Click += new System.EventHandler(this.starterListBtn_Click);
+            starterListBtn.Enabled = false;
+            starterListBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            starterListBtn.Location = new Point(190, 226);
+            starterListBtn.Margin = new Padding(4, 5, 4, 5);
+            starterListBtn.Name = "starterListBtn";
+            starterListBtn.Size = new Size(110, 59);
+            starterListBtn.TabIndex = 4;
+            starterListBtn.Text = "Auswahl";
+            starterListBtn.UseVisualStyleBackColor = true;
+            starterListBtn.Click += starterListBtn_Click;
             // 
             // starterListLabel
             // 
-            this.starterListLabel.AutoSize = true;
-            this.starterListLabel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.starterListLabel.Font = new System.Drawing.Font("Segoe UI", 10.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.starterListLabel.Location = new System.Drawing.Point(17, 258);
-            this.starterListLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.starterListLabel.Name = "starterListLabel";
-            this.starterListLabel.Size = new System.Drawing.Size(149, 27);
-            this.starterListLabel.TabIndex = 6;
-            this.starterListLabel.Text = "Nicht ausgewählt";
+            starterListLabel.AutoSize = true;
+            starterListLabel.BorderStyle = BorderStyle.FixedSingle;
+            starterListLabel.Font = new Font("Segoe UI", 10.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            starterListLabel.Location = new Point(17, 258);
+            starterListLabel.Margin = new Padding(4, 0, 4, 0);
+            starterListLabel.Name = "starterListLabel";
+            starterListLabel.Size = new Size(149, 27);
+            starterListLabel.TabIndex = 6;
+            starterListLabel.Text = "Nicht ausgewählt";
             // 
             // startRaceBtn
             // 
-            this.startRaceBtn.Enabled = false;
-            this.startRaceBtn.Location = new System.Drawing.Point(949, 123);
-            this.startRaceBtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.startRaceBtn.Name = "startRaceBtn";
-            this.startRaceBtn.Size = new System.Drawing.Size(205, 51);
-            this.startRaceBtn.TabIndex = 7;
-            this.startRaceBtn.Text = "Rennen starten";
-            this.startRaceBtn.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageAboveText;
-            this.startRaceBtn.UseVisualStyleBackColor = true;
-            this.startRaceBtn.Click += new System.EventHandler(this.startRaceBtn_Click);
+            startRaceBtn.Enabled = false;
+            startRaceBtn.Location = new Point(949, 123);
+            startRaceBtn.Margin = new Padding(4, 5, 4, 5);
+            startRaceBtn.Name = "startRaceBtn";
+            startRaceBtn.Size = new Size(205, 51);
+            startRaceBtn.TabIndex = 7;
+            startRaceBtn.Text = "Rennen starten";
+            startRaceBtn.TextImageRelation = TextImageRelation.ImageAboveText;
+            startRaceBtn.UseVisualStyleBackColor = true;
+            startRaceBtn.Click += startRaceBtn_Click;
             // 
             // remainingTime
             // 
-            this.remainingTime.AutoSize = true;
-            this.remainingTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.remainingTime.Location = new System.Drawing.Point(970, 22);
-            this.remainingTime.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.remainingTime.Name = "remainingTime";
-            this.remainingTime.Size = new System.Drawing.Size(184, 69);
-            this.remainingTime.TabIndex = 8;
-            this.remainingTime.Text = "60:00";
-            this.remainingTime.Click += new System.EventHandler(this.remainingTime_Click);
+            remainingTime.AutoSize = true;
+            remainingTime.Font = new Font("Microsoft Sans Serif", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            remainingTime.Location = new Point(970, 22);
+            remainingTime.Margin = new Padding(4, 0, 4, 0);
+            remainingTime.Name = "remainingTime";
+            remainingTime.Size = new Size(184, 69);
+            remainingTime.TabIndex = 8;
+            remainingTime.Text = "60:00";
+            remainingTime.Click += remainingTime_Click;
             // 
             // label3
             // 
-            this.label3.AutoSize = true;
-            this.label3.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(586, 123);
-            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(231, 28);
-            this.label3.TabIndex = 20;
-            this.label3.Text = "Startnummern Eingabe";
-            this.label3.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            label3.AutoSize = true;
+            label3.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label3.Location = new Point(586, 123);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(231, 28);
+            label3.TabIndex = 20;
+            label3.Text = "Startnummern Eingabe";
+            label3.TextAlign = ContentAlignment.TopCenter;
             // 
             // enterRoundBtn
             // 
-            this.enterRoundBtn.Enabled = false;
-            this.enterRoundBtn.Font = new System.Drawing.Font("Segoe UI Semibold", 10.2F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.enterRoundBtn.Location = new System.Drawing.Point(709, 167);
-            this.enterRoundBtn.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.enterRoundBtn.Name = "enterRoundBtn";
-            this.enterRoundBtn.Size = new System.Drawing.Size(152, 51);
-            this.enterRoundBtn.TabIndex = 11;
-            this.enterRoundBtn.Text = "Eintragen";
-            this.enterRoundBtn.UseVisualStyleBackColor = true;
-            this.enterRoundBtn.Click += new System.EventHandler(this.enterRoundBtn_Click);
+            enterRoundBtn.Enabled = false;
+            enterRoundBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            enterRoundBtn.Location = new Point(709, 167);
+            enterRoundBtn.Margin = new Padding(4, 5, 4, 5);
+            enterRoundBtn.Name = "enterRoundBtn";
+            enterRoundBtn.Size = new Size(152, 51);
+            enterRoundBtn.TabIndex = 11;
+            enterRoundBtn.Text = "Eintragen";
+            enterRoundBtn.UseVisualStyleBackColor = true;
+            enterRoundBtn.Click += enterRoundBtn_Click;
             // 
             // roundResultLabel
             // 
-            this.roundResultLabel.AutoSize = true;
-            this.roundResultLabel.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.roundResultLabel.ForeColor = System.Drawing.Color.Green;
-            this.roundResultLabel.Location = new System.Drawing.Point(586, 228);
-            this.roundResultLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.roundResultLabel.Name = "roundResultLabel";
-            this.roundResultLabel.Size = new System.Drawing.Size(0, 28);
-            this.roundResultLabel.TabIndex = 12;
+            roundResultLabel.AutoSize = true;
+            roundResultLabel.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            roundResultLabel.ForeColor = Color.Green;
+            roundResultLabel.Location = new Point(586, 228);
+            roundResultLabel.Margin = new Padding(4, 0, 4, 0);
+            roundResultLabel.Name = "roundResultLabel";
+            roundResultLabel.Size = new Size(0, 28);
+            roundResultLabel.TabIndex = 12;
             // 
             // resultGrid
             // 
-            this.resultGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.resultGrid.Location = new System.Drawing.Point(18, 401);
-            this.resultGrid.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.resultGrid.Name = "resultGrid";
-            this.resultGrid.RowHeadersWidth = 51;
-            this.resultGrid.RowTemplate.Height = 24;
-            this.resultGrid.Size = new System.Drawing.Size(1392, 523);
-            this.resultGrid.TabIndex = 14;
+            resultGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            resultGrid.Location = new Point(18, 401);
+            resultGrid.Margin = new Padding(4, 5, 4, 5);
+            resultGrid.Name = "resultGrid";
+            resultGrid.RowHeadersWidth = 51;
+            resultGrid.RowTemplate.Height = 24;
+            resultGrid.Size = new Size(1392, 523);
+            resultGrid.TabIndex = 14;
             // 
             // pictureBox1
             // 
-            this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
-            this.pictureBox1.Location = new System.Drawing.Point(1178, 16);
-            this.pictureBox1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(196, 202);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox1.TabIndex = 15;
-            this.pictureBox1.TabStop = false;
-            this.pictureBox1.Click += new System.EventHandler(this.pictureBox1_Click);
+            pictureBox1.BorderStyle = BorderStyle.FixedSingle;
+            pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
+            pictureBox1.Location = new Point(1178, 16);
+            pictureBox1.Margin = new Padding(3, 4, 3, 4);
+            pictureBox1.Name = "pictureBox1";
+            pictureBox1.Size = new Size(196, 202);
+            pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBox1.TabIndex = 15;
+            pictureBox1.TabStop = false;
+            pictureBox1.Click += pictureBox1_Click;
             // 
             // panel1
             // 
-            this.panel1.BackColor = System.Drawing.SystemColors.ButtonHighlight;
-            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.panel1.Controls.Add(this.classStatusLabel);
-            this.panel1.Controls.Add(this.classMultiList);
-            this.panel1.Controls.Add(this.startClassBtn);
-            this.panel1.Controls.Add(this.startNumberInput);
-            this.panel1.Controls.Add(this.panel4);
-            this.panel1.Controls.Add(this.panel2);
-            this.panel1.Controls.Add(this.label5);
-            this.panel1.Controls.Add(this.pictureBox1);
-            this.panel1.Controls.Add(this.roundResultLabel);
-            this.panel1.Controls.Add(this.remainingTime);
-            this.panel1.Controls.Add(this.enterRoundBtn);
-            this.panel1.Controls.Add(this.startRaceBtn);
-            this.panel1.Controls.Add(this.label3);
-            this.panel1.Location = new System.Drawing.Point(18, 30);
-            this.panel1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1392, 353);
-            this.panel1.TabIndex = 16;
+            panel1.BackColor = SystemColors.ButtonHighlight;
+            panel1.BorderStyle = BorderStyle.FixedSingle;
+            panel1.Controls.Add(classStatusLabel);
+            panel1.Controls.Add(classMultiList);
+            panel1.Controls.Add(startClassBtn);
+            panel1.Controls.Add(startNumberInput);
+            panel1.Controls.Add(panel4);
+            panel1.Controls.Add(panel2);
+            panel1.Controls.Add(label5);
+            panel1.Controls.Add(pictureBox1);
+            panel1.Controls.Add(roundResultLabel);
+            panel1.Controls.Add(remainingTime);
+            panel1.Controls.Add(enterRoundBtn);
+            panel1.Controls.Add(startRaceBtn);
+            panel1.Controls.Add(label3);
+            panel1.Location = new Point(18, 30);
+            panel1.Margin = new Padding(3, 4, 3, 4);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(1392, 353);
+            panel1.TabIndex = 16;
             // 
             // classStatusLabel
             // 
-            this.classStatusLabel.AutoSize = true;
-            this.classStatusLabel.Location = new System.Drawing.Point(1178, 236);
-            this.classStatusLabel.Name = "classStatusLabel";
-            this.classStatusLabel.Size = new System.Drawing.Size(0, 20);
-            this.classStatusLabel.TabIndex = 25;
-            this.classStatusLabel.Click += new System.EventHandler(this.classStatusLabel_Click);
+            classStatusLabel.AutoSize = true;
+            classStatusLabel.Location = new Point(1178, 236);
+            classStatusLabel.Name = "classStatusLabel";
+            classStatusLabel.Size = new Size(0, 20);
+            classStatusLabel.TabIndex = 25;
+            classStatusLabel.Click += classStatusLabel_Click;
             // 
             // classMultiList
             // 
-            this.classMultiList.Enabled = false;
-            this.classMultiList.FormattingEnabled = true;
-            this.classMultiList.Location = new System.Drawing.Point(949, 238);
-            this.classMultiList.Name = "classMultiList";
-            this.classMultiList.Size = new System.Drawing.Size(205, 92);
-            this.classMultiList.TabIndex = 24;
+            classMultiList.Enabled = false;
+            classMultiList.FormattingEnabled = true;
+            classMultiList.Location = new Point(949, 238);
+            classMultiList.Name = "classMultiList";
+            classMultiList.Size = new Size(205, 92);
+            classMultiList.TabIndex = 24;
             // 
             // startClassBtn
             // 
-            this.startClassBtn.Enabled = false;
-            this.startClassBtn.Location = new System.Drawing.Point(949, 188);
-            this.startClassBtn.Name = "startClassBtn";
-            this.startClassBtn.Size = new System.Drawing.Size(205, 37);
-            this.startClassBtn.TabIndex = 22;
-            this.startClassBtn.Text = "Klassen Starten";
-            this.startClassBtn.UseVisualStyleBackColor = true;
-            this.startClassBtn.Click += new System.EventHandler(this.startClassBtn_Click);
+            startClassBtn.Enabled = false;
+            startClassBtn.Location = new Point(949, 188);
+            startClassBtn.Name = "startClassBtn";
+            startClassBtn.Size = new Size(205, 37);
+            startClassBtn.TabIndex = 22;
+            startClassBtn.Text = "Klassen Starten";
+            startClassBtn.UseVisualStyleBackColor = true;
+            startClassBtn.Click += startClassBtn_Click;
             // 
             // startNumberInput
             // 
-            this.startNumberInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.startNumberInput.Font = new System.Drawing.Font("Segoe UI", 19.8000011F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.startNumberInput.Location = new System.Drawing.Point(529, 167);
-            this.startNumberInput.Name = "startNumberInput";
-            this.startNumberInput.Size = new System.Drawing.Size(146, 51);
-            this.startNumberInput.TabIndex = 21;
-            this.startNumberInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.startNumberInput_KeyDown);
+            startNumberInput.BorderStyle = BorderStyle.FixedSingle;
+            startNumberInput.Font = new Font("Segoe UI", 19.8000011F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            startNumberInput.Location = new Point(529, 167);
+            startNumberInput.Name = "startNumberInput";
+            startNumberInput.Size = new Size(146, 51);
+            startNumberInput.TabIndex = 21;
+            startNumberInput.KeyDown += startNumberInput_KeyDown;
             // 
             // panel4
             // 
-            this.panel4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.panel4.Controls.Add(this.label6);
-            this.panel4.Controls.Add(this.raceNameComboBox);
-            this.panel4.Controls.Add(this.raceDuration);
-            this.panel4.Controls.Add(this.confirmDurationBtn);
-            this.panel4.Controls.Add(this.label2);
-            this.panel4.Controls.Add(this.label4);
-            this.panel4.Controls.Add(this.starterListLabel);
-            this.panel4.Controls.Add(this.starterListBtn);
-            this.panel4.Controls.Add(this.label1);
-            this.panel4.Location = new System.Drawing.Point(15, 16);
-            this.panel4.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.panel4.Name = "panel4";
-            this.panel4.Size = new System.Drawing.Size(319, 318);
-            this.panel4.TabIndex = 0;
+            panel4.BorderStyle = BorderStyle.FixedSingle;
+            panel4.Controls.Add(label6);
+            panel4.Controls.Add(raceNameComboBox);
+            panel4.Controls.Add(raceDuration);
+            panel4.Controls.Add(confirmDurationBtn);
+            panel4.Controls.Add(label2);
+            panel4.Controls.Add(label4);
+            panel4.Controls.Add(starterListLabel);
+            panel4.Controls.Add(starterListBtn);
+            panel4.Controls.Add(label1);
+            panel4.Location = new Point(15, 16);
+            panel4.Margin = new Padding(3, 4, 3, 4);
+            panel4.Name = "panel4";
+            panel4.Size = new Size(319, 318);
+            panel4.TabIndex = 0;
             // 
             // label6
             // 
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Segoe UI", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.Location = new System.Drawing.Point(17, 76);
-            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(120, 23);
-            this.label6.TabIndex = 18;
-            this.label6.Text = "Veranstaltung:";
-            this.label6.Click += new System.EventHandler(this.label6_Click);
+            label6.AutoSize = true;
+            label6.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            label6.Location = new Point(17, 76);
+            label6.Margin = new Padding(4, 0, 4, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(120, 23);
+            label6.TabIndex = 18;
+            label6.Text = "Veranstaltung:";
+            label6.Click += label6_Click;
             // 
             // raceNameComboBox
             // 
-            this.raceNameComboBox.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.raceNameComboBox.FormattingEnabled = true;
-            this.raceNameComboBox.Location = new System.Drawing.Point(17, 102);
-            this.raceNameComboBox.Name = "raceNameComboBox";
-            this.raceNameComboBox.Size = new System.Drawing.Size(283, 39);
-            this.raceNameComboBox.TabIndex = 17;
+            raceNameComboBox.Font = new Font("Segoe UI", 13.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            raceNameComboBox.FormattingEnabled = true;
+            raceNameComboBox.Location = new Point(17, 102);
+            raceNameComboBox.Name = "raceNameComboBox";
+            raceNameComboBox.Size = new Size(283, 39);
+            raceNameComboBox.TabIndex = 17;
             // 
             // label4
             // 
-            this.label4.AutoSize = true;
-            this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 15F, ((System.Drawing.FontStyle)((System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Underline))), System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label4.Location = new System.Drawing.Point(17, 17);
-            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(166, 29);
-            this.label4.TabIndex = 16;
-            this.label4.Text = "Eingabefeld:";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
+            label4.AutoSize = true;
+            label4.Font = new Font("Microsoft Sans Serif", 15F, FontStyle.Bold | FontStyle.Underline, GraphicsUnit.Point, 0);
+            label4.Location = new Point(17, 17);
+            label4.Margin = new Padding(4, 0, 4, 0);
+            label4.Name = "label4";
+            label4.Size = new Size(166, 29);
+            label4.TabIndex = 16;
+            label4.Text = "Eingabefeld:";
+            label4.Click += label4_Click;
             // 
             // panel2
             // 
-            this.panel2.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.panel2.Location = new System.Drawing.Point(186, 404);
-            this.panel2.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(241, 165);
-            this.panel2.TabIndex = 18;
+            panel2.BackColor = SystemColors.ControlDark;
+            panel2.Location = new Point(186, 404);
+            panel2.Margin = new Padding(3, 4, 3, 4);
+            panel2.Name = "panel2";
+            panel2.Size = new Size(241, 165);
+            panel2.TabIndex = 18;
             // 
             // label5
             // 
-            this.label5.AutoSize = true;
-            this.label5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.label5.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label5.Location = new System.Drawing.Point(417, 16);
-            this.label5.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(530, 78);
-            this.label5.TabIndex = 17;
-            this.label5.Text = "Runden-Tracker";
+            label5.AutoSize = true;
+            label5.BorderStyle = BorderStyle.FixedSingle;
+            label5.Font = new Font("Microsoft Sans Serif", 40F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label5.Location = new Point(417, 16);
+            label5.Margin = new Padding(4, 0, 4, 0);
+            label5.Name = "label5";
+            label5.Size = new Size(530, 78);
+            label5.TabIndex = 17;
+            label5.Text = "Runden-Tracker";
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1451, 939);
-            this.Controls.Add(this.panel1);
-            this.Controls.Add(this.resultGrid);
-            this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.Name = "Form1";
-            this.Text = "Runden-Tracker";
-            this.Load += new System.EventHandler(this.Form1_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.raceDuration)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.resultGrid)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
-            this.panel4.ResumeLayout(false);
-            this.panel4.PerformLayout();
-            this.ResumeLayout(false);
+            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(1451, 939);
+            Controls.Add(panel1);
+            Controls.Add(resultGrid);
+            Margin = new Padding(4, 5, 4, 5);
+            Name = "Form1";
+            Text = "Runden-Tracker";
+            Load += Form1_Load;
+            ((System.ComponentModel.ISupportInitialize)raceDuration).EndInit();
+            ((System.ComponentModel.ISupportInitialize)resultGrid).EndInit();
+            ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
+            panel1.ResumeLayout(false);
+            panel1.PerformLayout();
+            panel4.ResumeLayout(false);
+            panel4.PerformLayout();
+            ResumeLayout(false);
 
         }
 
