@@ -11,6 +11,6 @@
         public string Strecke { get; set; }
         public string Klasse { get; set; }
         public string UciCode { get; set; }
-
+        public Dictionary<string, string> Extra { get; set; } = new Dictionary<string, string>();
     }
 }
