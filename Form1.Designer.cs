@@ -53,6 +53,7 @@
             label4 = new Label();
             panel2 = new Panel();
             label5 = new Label();
+            chkLiveTickerAktiv = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)raceDuration).BeginInit();
             ((System.ComponentModel.ISupportInitialize)resultGrid).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
@@ -63,7 +64,7 @@
             // raceDuration
             // 
             raceDuration.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            raceDuration.Location = new Point(17, 178);
+            raceDuration.Location = new Point(16, 163);
             raceDuration.Margin = new Padding(4, 5, 4, 5);
             raceDuration.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             raceDuration.Name = "raceDuration";
@@ -73,7 +74,7 @@
             // confirmDurationBtn
             // 
             confirmDurationBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            confirmDurationBtn.Location = new Point(190, 150);
+            confirmDurationBtn.Location = new Point(189, 135);
             confirmDurationBtn.Margin = new Padding(4, 5, 4, 5);
             confirmDurationBtn.Name = "confirmDurationBtn";
             confirmDurationBtn.Size = new Size(110, 58);
@@ -86,7 +87,7 @@
             // 
             label1.AutoSize = true;
             label1.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label1.Location = new Point(17, 150);
+            label1.Location = new Point(16, 135);
             label1.Margin = new Padding(4, 0, 4, 0);
             label1.Name = "label1";
             label1.Size = new Size(166, 23);
@@ -97,7 +98,7 @@
             // 
             label2.AutoSize = true;
             label2.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label2.Location = new Point(17, 226);
+            label2.Location = new Point(17, 211);
             label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
             label2.Size = new Size(130, 23);
@@ -108,7 +109,7 @@
             // 
             starterListBtn.Enabled = false;
             starterListBtn.Font = new Font("Segoe UI Semibold", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            starterListBtn.Location = new Point(190, 226);
+            starterListBtn.Location = new Point(189, 211);
             starterListBtn.Margin = new Padding(4, 5, 4, 5);
             starterListBtn.Name = "starterListBtn";
             starterListBtn.Size = new Size(110, 59);
@@ -122,7 +123,7 @@
             starterListLabel.AutoSize = true;
             starterListLabel.BorderStyle = BorderStyle.FixedSingle;
             starterListLabel.Font = new Font("Segoe UI", 10.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            starterListLabel.Location = new Point(17, 258);
+            starterListLabel.Location = new Point(16, 243);
             starterListLabel.Margin = new Padding(4, 0, 4, 0);
             starterListLabel.Name = "starterListLabel";
             starterListLabel.Size = new Size(149, 27);
@@ -279,6 +280,7 @@
             // panel4
             // 
             panel4.BorderStyle = BorderStyle.FixedSingle;
+            panel4.Controls.Add(chkLiveTickerAktiv);
             panel4.Controls.Add(label6);
             panel4.Controls.Add(raceNameComboBox);
             panel4.Controls.Add(raceDuration);
@@ -298,7 +300,7 @@
             // 
             label6.AutoSize = true;
             label6.Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label6.Location = new Point(17, 76);
+            label6.Location = new Point(16, 65);
             label6.Margin = new Padding(4, 0, 4, 0);
             label6.Name = "label6";
             label6.Size = new Size(120, 23);
@@ -310,7 +312,7 @@
             // 
             raceNameComboBox.Font = new Font("Segoe UI", 13.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             raceNameComboBox.FormattingEnabled = true;
-            raceNameComboBox.Location = new Point(17, 102);
+            raceNameComboBox.Location = new Point(16, 91);
             raceNameComboBox.Name = "raceNameComboBox";
             raceNameComboBox.Size = new Size(283, 39);
             raceNameComboBox.TabIndex = 17;
@@ -347,6 +349,17 @@
             label5.Size = new Size(530, 78);
             label5.TabIndex = 17;
             label5.Text = "Runden-Tracker";
+            // 
+            // chkLiveTickerAktiv
+            // 
+            chkLiveTickerAktiv.AutoSize = true;
+            chkLiveTickerAktiv.Location = new Point(16, 289);
+            chkLiveTickerAktiv.Name = "chkLiveTickerAktiv";
+            chkLiveTickerAktiv.Size = new Size(230, 24);
+            chkLiveTickerAktiv.TabIndex = 19;
+            chkLiveTickerAktiv.Text = "Live-Ticker an Website senden";
+            chkLiveTickerAktiv.UseVisualStyleBackColor = true;
+            chkLiveTickerAktiv.CheckedChanged += checkBox1_CheckedChanged;
             // 
             // Form1
             // 
@@ -396,5 +409,6 @@
         private System.Windows.Forms.Button startClassBtn;
         private System.Windows.Forms.CheckedListBox classMultiList;
         private System.Windows.Forms.Label classStatusLabel;
+        private CheckBox chkLiveTickerAktiv;
     }
 }

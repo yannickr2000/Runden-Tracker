@@ -40,7 +40,7 @@ namespace Rundenzeiten
         // Helfer
         private bool RaceRunning => startRaceBtn.Text == "Rennen beenden";
         private static string Norm(string s) => (s ?? string.Empty).Trim();
-        
+
         // LIVETICKER – SERVER UPDATE
         private static readonly HttpClient httpClient = new HttpClient();
 
@@ -54,7 +54,7 @@ namespace Rundenzeiten
 
         // HTML-Helper
         private static string HtmlEncode(string s) => WebUtility.HtmlEncode(s ?? string.Empty);
-       
+
 
 
         public Form1()
@@ -246,8 +246,6 @@ namespace Rundenzeiten
             entries.Clear();
             entries.AddRange(ReadCsvFile(filePath));
         }
-
-
 
         private List<PersonEntry> ReadCsvFile(string path)
         {
@@ -513,7 +511,6 @@ namespace Rundenzeiten
             res.Add(sb.ToString());
             return res.ToArray();
         }
-
 
         //==========================================================
 
@@ -903,11 +900,18 @@ namespace Rundenzeiten
 
             saveCSV();
         }
+        
         // ===========================================================
         //  Live-Ticker
         // ===========================================================
+        private bool LiveTickerEnabled => chkLiveTickerAktiv != null && chkLiveTickerAktiv.Checked;
+
         private void SendTickerToServer(string text)
         {
+            // Nur senden, wenn Checkbox aktiv ist
+            if (!LiveTickerEnabled)
+                return;
+
             try
             {
                 string url = GetLiveTickerUrl();
@@ -931,11 +935,13 @@ namespace Rundenzeiten
             }
         }
 
-
         private void SaveLiveTicker(List<CSVRecord> records)
         {
             try
             {
+                // Wenn Liveticker nicht aktiv ist → gar nichts machen
+                if (!LiveTickerEnabled)
+                    return;
                 // Wenn kein Rennen läuft → Hinweis anzeigen
                 if (!RaceRunning)
                 {
@@ -1285,7 +1291,7 @@ namespace Rundenzeiten
             );
             Directory.CreateDirectory(Path.GetDirectoryName(excelPath)!);
 
-            
+
             // Veranstaltung & Lauf/Rennen Nummer
             string veranstaltung = raceNameComboBox?.SelectedItem?.ToString() ?? "CrossImBad";
             var (runLabel, runNummer) = GetRunLabelAndNumberFromPath(filePath);
@@ -1635,35 +1641,42 @@ namespace Rundenzeiten
                 return 2;
             }
 
-            var ranked = records
+            // 1) Sortierung für "sportlich": zuerst Altersklasse (U9/U11/...), dann Leistung
+            //    (Runden desc, Zeit asc, Startnummer)
+            var ordered = records
                 .OrderBy(r => ExtractAgeClass(r.Klasse))
-                .ThenBy(r => GenderKey(r.Geschlecht))
                 .ThenByDescending(r => r.Rundenzeiten?.Count ?? 0)
                 .ThenBy(r => r.Zeit.TotalSeconds)
+                .ThenBy(r => int.TryParse(r.Startnummer, out var sn) ? sn : int.MaxValue)
                 .ToList();
 
-            for (int i = 0; i < ranked.Count; i++)
-                ranked[i].Platz = i + 1;
-
-            // Standard-„PlatzAK“: je Klasse + Geschlecht
-            foreach (var group in ranked.GroupBy(r => new { r.Klasse, Key = GenderKey(r.Geschlecht) }))
+            // 2) PLATZ = innerhalb der Altersklasse (z.B. U9 gemischt m/w)
+            foreach (var grp in ordered.GroupBy(r => ExtractAgeClass(r.Klasse)))
             {
-                int akPlatz = 1;
-                foreach (var r in group.OrderBy(x => x.Platz))
-                    r.PlatzAK = akPlatz++;
+                int place = 1;
+                foreach (var r in grp)
+                    r.Platz = place++;
             }
 
-            // HOBBY-Sonderregel: CrossImBad + Klasse enthält "Hobby"
+            // 3) PLATZAK = innerhalb Altersklasse + Geschlecht (U9 m, U9 w, ...)
+            foreach (var grp in ordered.GroupBy(r => new { AK = ExtractAgeClass(r.Klasse), G = GenderKey(r.Geschlecht) }))
+            {
+                int akPlace = 1;
+                foreach (var r in grp)
+                    r.PlatzAK = akPlace++;
+            }
+
+            // 4) Hobby-Sonderregel (dein bisheriger Block) – bleibt, überschreibt ggf. PlatzAK wie gewollt
             if (IsCrossImBadSelected())
             {
-                foreach (var r in ranked.Where(x =>
+                foreach (var r in ordered.Where(x =>
                              x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0))
                 {
                     var age = GetAgeOnEvent(r.Geburtsdatum);
                     r.AltersgruppeHobby = GetHobbyBucket(age); // "", "Ü40", "Ü50"
                 }
 
-                var hobbyBuckets = ranked.Where(x =>
+                var hobbyBuckets = ordered.Where(x =>
                     x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0 &&
                     !string.IsNullOrEmpty(x.AltersgruppeHobby));
 
@@ -1678,7 +1691,7 @@ namespace Rundenzeiten
                     }
                 }
 
-                foreach (var r in ranked.Where(x =>
+                foreach (var r in ordered.Where(x =>
                              x.Klasse?.IndexOf("hobby", StringComparison.OrdinalIgnoreCase) >= 0 &&
                              string.IsNullOrEmpty(x.AltersgruppeHobby)))
                 {
@@ -1687,7 +1700,7 @@ namespace Rundenzeiten
             }
 
             records.Clear();
-            records.AddRange(ranked);
+            records.AddRange(ordered);
         }
 
         private int ExtractAgeClass(string klasse)
@@ -1794,5 +1807,10 @@ namespace Rundenzeiten
         private void pictureBox1_Click(object sender, EventArgs e) { }
 
         private void classStatusLabel_Click(object sender, EventArgs e) { }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }
