@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Button;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ExplorerBar;
 
 
@@ -55,7 +56,10 @@ namespace Rundenzeiten
         // HTML-Helper
         private static string HtmlEncode(string s) => WebUtility.HtmlEncode(s ?? string.Empty);
 
-
+        // Klassenstarts per Checkbox (egal welche Veranstaltung)
+        private bool UseClassStarts => chkKlassenstarts != null && chkKlassenstarts.Checked;
+        private bool classStartOptionLocked = false;
+        private bool classStartOptionValue = false;
 
         public Form1()
         {
@@ -80,6 +84,39 @@ namespace Rundenzeiten
                 "Einzelzeitfahren"
             });
             raceNameComboBox.SelectedIndex = -1;
+
+            chkKlassenstarts.CheckedChanged += (s, e) =>
+            {
+                // Wenn gesperrt -> Änderung sofort zurückdrehen
+                if (classStartOptionLocked)
+                {
+                    chkKlassenstarts.CheckedChanged -= null; // (macht nichts, nur damit klar ist: kein Rekursions-Loop)
+                    chkKlassenstarts.Checked = classStartOptionValue;
+                    return;
+                }
+
+                // normal: merken & UI updaten
+                classStartOptionValue = chkKlassenstarts.Checked;
+
+                // Wenn ausgeschaltet wird: Klassenstarts zurücksetzen
+                if (!chkKlassenstarts.Checked)
+                {
+                    classStartTimes.Clear();
+
+                    if (classMultiList != null)
+                    {
+                        for (int i = 0; i < classMultiList.Items.Count; i++)
+                            classMultiList.SetItemChecked(i, false);
+
+                        classMultiList.Invalidate();
+                    }
+                }
+
+                UpdateClassStartUIState();
+            };
+
+
+
 
             // bei Änderung der Auswahl UI aktualisieren
             classMultiList.SelectedIndexChanged += (s, e) => UpdateClassStartUIState();
@@ -192,6 +229,12 @@ namespace Rundenzeiten
                 return;
             }
 
+            // Checkbox festsetzen ab jetzt
+            classStartOptionValue = chkKlassenstarts.Checked;
+            classStartOptionLocked = true;
+
+            chkKlassenstarts.Enabled = false;     // optisch grau
+            chkKlassenstarts.AutoCheck = false;   // selbst wenn enabled irgendwo wieder true wird: Klick ändert nichts
 
 
             // Ergebnis-Dateipfad ableiten
@@ -199,8 +242,8 @@ namespace Rundenzeiten
             string rennenNummer = ExtractRaceNumber(fileName);
             resultFilePath = GetResultFilePath(rennenNummer);
 
-            // ------ Klassenliste befüllen (nur CrossImBad nutzt Klassenstarts) ------
-            if (IsCrossImBadSelected())
+            // ------ Klassenliste befüllen (nur wenn Checkbox aktiv) ------
+            if (UseClassStarts)
             {
                 var classes = entries
                     .Select(e2 => Norm(e2.Klasse))
@@ -226,6 +269,7 @@ namespace Rundenzeiten
                         classMultiList.SetItemChecked(i, false);
                     }
                 }
+
                 classMultiList.Invalidate();
             }
             else
@@ -234,6 +278,7 @@ namespace Rundenzeiten
                 classMultiList.Enabled = false;
             }
 
+
             // CSV/Excel sofort einmal erzeugen & UI-Status aktualisieren
             saveCSV();
             starterListLabel.Text = "Teilnehmer geladen";
@@ -241,7 +286,7 @@ namespace Rundenzeiten
             //startRaceBtn.Enabled = true;
 
             UpdateClassStartUIState();
-            UpdateClassStatusLabel();
+            this.Text = $"UseClassStarts={UseClassStarts} entries={entries.Count}";
 
             entries.Clear();
             entries.AddRange(ReadCsvFile(filePath));
@@ -567,7 +612,7 @@ namespace Rundenzeiten
         // startet alle aktuell angehakten, noch nicht gestarteten Klassen
         private void StartSelectedClasses(DateTime startTime)
         {
-            if (!IsCrossImBadSelected()) return;
+            if (!UseClassStarts) return;
             if (classMultiList == null || classMultiList.Items.Count == 0) return;
 
             var toStart = classMultiList.CheckedItems
@@ -655,10 +700,16 @@ namespace Rundenzeiten
 
         private void UpdateClassStartUIState()
         {
-            bool canUseClasses = IsCrossImBadSelected() && entries.Count > 0;
+            bool hasEntries = entries.Count > 0;
+
+            // Klassenstarts sind nur aktiv, wenn Checkbox an + Starterliste geladen
+            bool canUseClasses = UseClassStarts && hasEntries;
 
             if (classMultiList != null)
                 classMultiList.Enabled = canUseClasses;
+
+            // (optional) wenn du ein Panel/GroupBox hast, besser alles zusammen sperren:
+            // grpKlassenstarts.Enabled = canUseClasses;
 
             bool anyFreshChecked = false;
 
@@ -675,37 +726,29 @@ namespace Rundenzeiten
                 }
             }
 
-            // Button "Klasse starten" nur aktiv, wenn:
-            // - CrossImBad
-            // - Starterliste geladen
-            // - Rennen läuft
-            // - mind. eine noch nicht gestartete Klasse angehakt
+            // Button "Klassen starten"
             startClassBtn.Enabled = canUseClasses && RaceRunning && anyFreshChecked;
 
-            // ------------------------------------------------------
-            // Button "Rennen starten" steuern
-            // ------------------------------------------------------
-            // Wenn das Rennen schon läuft, soll man immer beenden können
+            // Button "Rennen starten"
             if (RaceRunning)
             {
                 startRaceBtn.Enabled = true;
             }
             else
             {
-                bool hasEntries = entries.Count > 0;
-
-                if (IsCrossImBadSelected())
+                if (UseClassStarts)
                 {
-                    // Bei CrossImBad: Rennen starten erst, wenn mind. eine (frische) Klasse angehakt ist
+                    // Wenn Klassenstarts aktiv: erst starten, wenn mind. 1 Klasse angehakt ist
                     startRaceBtn.Enabled = hasEntries && anyFreshChecked;
                 }
                 else
                 {
-                    // Andere Veranstaltungen dürfen auch ohne Klassenstart loslaufen
+                    // Ohne Klassenstarts reicht Starterliste
                     startRaceBtn.Enabled = hasEntries;
                 }
             }
         }
+
 
         private void UpdateClassStatusLabel()
         {
@@ -798,8 +841,12 @@ namespace Rundenzeiten
             starterListBtn.Enabled = false;
             raceDuration.Enabled = false;
             confirmDurationBtn.Enabled = false;
+            classStartOptionValue = chkKlassenstarts.Checked;
+            classStartOptionLocked = true;
+            chkKlassenstarts.Enabled = false;
+            chkKlassenstarts.AutoCheck = false;
 
-            if (IsCrossImBadSelected())
+            if (UseClassStarts)
             {
                 StartSelectedClasses(start);
             }
@@ -807,6 +854,7 @@ namespace Rundenzeiten
             saveCSV();
 
             UpdateClassStartUIState();
+
 
         }
 
@@ -872,7 +920,7 @@ namespace Rundenzeiten
             double toAdd = personEntries.Select(x => x.Time.TotalSeconds).Sum();
             TimeSpan lapTime;
 
-            if (IsCrossImBadSelected())
+            if (UseClassStarts)
             {
                 var key = Norm(person.Klasse);
                 if (!classStartTimes.TryGetValue(key, out DateTime classStart))
@@ -900,7 +948,7 @@ namespace Rundenzeiten
 
             saveCSV();
         }
-        
+
         // ===========================================================
         //  Live-Ticker
         // ===========================================================
@@ -1809,6 +1857,16 @@ namespace Rundenzeiten
         private void classStatusLabel_Click(object sender, EventArgs e) { }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void raceNameComboBox_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void chkKlassenstarts_CheckedChanged(object sender, EventArgs e)
         {
 
         }
